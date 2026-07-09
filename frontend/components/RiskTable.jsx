@@ -1,36 +1,6 @@
 import RiskBadge from "./RiskBadge";
 
-const orders = [
-  {
-    id: "ORD-1024",
-    product: "Headphone",
-    amount: "৳7,500",
-    risk: "High",
-    score: 87,
-    reasons: ["COD", "Phone not verified", "Long distance"],
-    action: "Call before shipping",
-  },
-  {
-    id: "ORD-1031",
-    product: "Cosmetics",
-    amount: "৳2,200",
-    risk: "Medium",
-    score: 58,
-    reasons: ["New customer", "Incomplete address"],
-    action: "Send confirmation",
-  },
-  {
-    id: "ORD-1042",
-    product: "T-Shirt",
-    amount: "৳1,200",
-    risk: "Low",
-    score: 22,
-    reasons: ["Verified phone", "Complete address"],
-    action: "Ship normally",
-  },
-];
-
-export default function RiskTable() {
+export default function RiskTable({ orders = [] }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div>
@@ -58,16 +28,16 @@ export default function RiskTable() {
 
           <tbody className="divide-y">
             {orders.map((order) => (
-              <tr key={order.id}>
+              <tr key={order.order_id}>
                 <td className="py-4 font-semibold text-slate-900">
-                  {order.id}
+                  {order.order_id}
                 </td>
-                <td>{order.product}</td>
-                <td>{order.amount}</td>
+                <td>{order.product_name}</td>
+                <td>৳{Number(order.amount || 0).toLocaleString()}</td>
                 <td>
-                  <RiskBadge level={order.risk} />
+                  <RiskBadge level={order.risk_level} />
                 </td>
-                <td className="font-semibold">{order.score}/100</td>
+                <td className="font-semibold">{order.risk_score}/100</td>
                 <td>
                   <div className="flex flex-wrap gap-2">
                     {order.reasons.map((reason) => (
@@ -80,11 +50,14 @@ export default function RiskTable() {
                     ))}
                   </div>
                 </td>
-                <td className="font-medium text-slate-900">{order.action}</td>
+                <td className="font-medium text-slate-900">{order.suggested_action}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        {orders.length === 0 && (
+          <p className="py-8 text-center text-sm text-slate-500">No risk orders found.</p>
+        )}
       </div>
     </div>
   );
