@@ -17,8 +17,8 @@ export default async function ProfitPage() {
   const maxProfit = Math.max(...products.map((product) => Math.max(product.net_profit, 0)), 1);
 
   return (
-    <main className="min-h-screen bg-slate-100"><Sidebar /><section className="lg:pl-72">
-      <header className="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur"><h1 className="text-2xl font-bold text-slate-950">ProfitDoctor</h1><p className="mt-1 text-sm text-slate-500">Analyze sales, cost, shipping, profit margin, and low-profit products.</p></header>
+    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0"><Sidebar /><section className="lg:pl-64">
+      <header className="border-b border-white/70 bg-white/70 px-6 py-6 backdrop-blur-xl"><h1 className="text-2xl font-bold tracking-tight text-slate-950">ProfitDoctor</h1><p className="mt-1 text-sm text-slate-500">Analyze sales, cost, shipping, profit margin, and low-profit products.</p></header>
       <div className="space-y-6 p-6">
         {error && <p className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">Could not load profit analysis: {error}</p>}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><StatCard title="Total Sales" value={money(summary.total_sales)} subtitle="Demo dataset" tone="blue" /><StatCard title="Total Cost" value={money(summary.total_cost)} subtitle="Product cost" tone="purple" /><StatCard title="Net Profit" value={money(summary.net_profit)} subtitle="After shipping" tone="green" /><StatCard title="Profit Margin" value={`${summary.profit_margin || 0}%`} subtitle="Overall margin" tone="blue" /></div>
