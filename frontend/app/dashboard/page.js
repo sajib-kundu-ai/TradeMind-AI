@@ -1,5 +1,6 @@
 import Sidebar from "@/components/Sidebar";
 import StatCard from "@/components/StatCard";
+import RiskBadge from "@/components/RiskBadge";
 import { getDemoAnalysis } from "@/lib/api";
 
 function money(value) {
@@ -21,6 +22,8 @@ export default async function DashboardPage() {
   const profit = data?.profit_summary || {};
   const stock = data?.stock_summary || {};
   const orders = data?.risk_orders || [];
+  const riskPercent = (value) =>
+    risk.total_orders ? Math.round(((value || 0) / risk.total_orders) * 100) : 0;
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -93,7 +96,7 @@ export default async function DashboardPage() {
                     <span className="text-slate-500">{risk.low_risk || 0} orders</span>
                   </div>
                   <div className="h-3 rounded-full bg-slate-100">
-                    <div className="h-3 w-[65%] rounded-full bg-green-500" />
+                    <div className="h-3 rounded-full bg-green-500" style={{ width: `${riskPercent(risk.low_risk)}%` }} />
                   </div>
                 </div>
 
@@ -103,7 +106,7 @@ export default async function DashboardPage() {
                     <span className="text-slate-500">{risk.medium_risk || 0} orders</span>
                   </div>
                   <div className="h-3 rounded-full bg-slate-100">
-                    <div className="h-3 w-[35%] rounded-full bg-yellow-500" />
+                    <div className="h-3 rounded-full bg-yellow-500" style={{ width: `${riskPercent(risk.medium_risk)}%` }} />
                   </div>
                 </div>
 
@@ -113,7 +116,7 @@ export default async function DashboardPage() {
                     <span className="text-slate-500">{risk.high_risk || 0} orders</span>
                   </div>
                   <div className="h-3 rounded-full bg-slate-100">
-                    <div className="h-3 w-[20%] rounded-full bg-red-500" />
+                    <div className="h-3 rounded-full bg-red-500" style={{ width: `${riskPercent(risk.high_risk)}%` }} />
                   </div>
                 </div>
               </div>
@@ -176,9 +179,7 @@ export default async function DashboardPage() {
                       <td>{order.product_name}</td>
                       <td>{money(order.amount)}</td>
                       <td>
-                        <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
-                          {order.risk_level}
-                        </span>
+                        <RiskBadge level={order.risk_level} />
                       </td>
                       <td>{order.risk_score}/100</td>
                       <td className="font-medium text-slate-900">
