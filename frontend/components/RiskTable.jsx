@@ -2,7 +2,7 @@ import RiskBadge from "./RiskBadge";
 
 export default function RiskTable({ orders = [] }) {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="overflow-hidden rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
       <div>
         <h2 className="text-lg font-bold text-slate-950">
           ReturnGuard Risk Analysis
@@ -13,8 +13,8 @@ export default function RiskTable({ orders = [] }) {
       </div>
 
       <div className="mt-6 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b text-slate-500">
+        <table className="w-full min-w-[920px] text-left text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-wider text-slate-500">
             <tr>
               <th className="py-3">Order ID</th>
               <th>Product</th>
@@ -26,9 +26,9 @@ export default function RiskTable({ orders = [] }) {
             </tr>
           </thead>
 
-          <tbody className="divide-y">
+          <tbody className="divide-y divide-slate-100">
             {orders.map((order) => (
-              <tr key={order.order_id}>
+              <tr key={order.order_id} className="transition hover:bg-blue-50/40">
                 <td className="py-4 font-semibold text-slate-900">
                   {order.order_id}
                 </td>
