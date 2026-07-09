@@ -2,11 +2,13 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 async function handleResponse(response) {
+  const data = await response.json().catch(() => ({}));
+
   if (!response.ok) {
-    throw new Error("API request failed");
+    throw new Error(data.detail || data.error || `API request failed (${response.status})`);
   }
 
-  return response.json();
+  return data;
 }
 
 export async function getDemoAnalysis(limit = 20) {
