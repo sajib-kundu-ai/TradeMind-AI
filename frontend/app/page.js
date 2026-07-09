@@ -28,10 +28,10 @@ export default function Home() {
         </div>
 
         <Link
-          href="/dashboard"
+          href="/login"
           className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
         >
-          Launch App
+          Login
         </Link>
       </nav>
 
@@ -57,7 +57,7 @@ export default function Home() {
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Link
               href="/dashboard"
-              className="rounded-2xl bg-blue-600 px-7 py-4 font-semibold text-white shadow-xl shadow-blue-600/25 transition hover:-translate-y-1 hover:bg-blue-500"
+              className="rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-7 py-4 font-semibold text-white shadow-xl shadow-blue-600/25 transition hover:-translate-y-1 hover:from-blue-500 hover:to-violet-500"
             >
               Open Dashboard
             </Link>
