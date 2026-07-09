@@ -14,12 +14,14 @@ env/
 
 # Environment files
 .env
+backend/.env
+frontend/.env.local
 .env.local
 .env.production
 .env.development
 
 # Reports / generated files
-reports/
+/reports/
 *.log
 
 # OS files
