@@ -84,6 +84,15 @@ def calculate_order_risk(order):
 
 
 def analyze_risk_dataframe(df):
+    required_columns = [
+        "order_id", "product_name", "product_category", "payment_type", "amount",
+        "customer_type", "phone_verified", "address_complete", "distance_km",
+        "previous_returns", "order_hour",
+    ]
+    missing = [column for column in required_columns if column not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {', '.join(missing)}")
+
     results = [calculate_order_risk(row) for row in df.to_dict(orient="records")]
 
     total_orders = len(results)
