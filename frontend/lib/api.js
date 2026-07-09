@@ -33,3 +33,32 @@ export async function uploadAnalysis(file, limit = 20) {
 
   return handleResponse(response);
 }
+
+export async function requestOtp(email) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/request-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  return handleResponse(response);
+}
+
+export async function verifyOtp(email, otp) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, otp }),
+  });
+
+  return handleResponse(response);
+}
+
+export async function getCurrentUser(token) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
