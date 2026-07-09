@@ -38,7 +38,7 @@ export default function UploadBox() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-bold text-slate-950">Upload Order Data</h2>
@@ -46,11 +46,11 @@ export default function UploadBox() {
               Upload CSV/XLSX order data to analyze risk, profit, and stock insights.
             </p>
           </div>
-          <div className="rounded-2xl bg-blue-50 p-3 text-blue-600"><UploadCloud size={24} /></div>
+          <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 p-3 text-white shadow-lg shadow-blue-500/20"><UploadCloud size={24} /></div>
         </div>
 
-        <label className="mt-8 flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 px-6 py-12 text-center transition hover:border-blue-400 hover:bg-blue-50">
-          <UploadCloud className="text-slate-400" size={42} />
+        <label className="group mt-8 flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-blue-200 bg-gradient-to-br from-blue-50/80 to-violet-50/70 px-6 py-14 text-center transition duration-300 hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-xl hover:shadow-blue-100/70">
+          <span className="rounded-2xl bg-white p-4 text-blue-600 shadow-md transition group-hover:scale-105"><UploadCloud size={32} /></span>
           <p className="mt-4 text-sm font-semibold text-slate-700">Click to upload CSV or Excel file</p>
           <p className="mt-1 text-xs text-slate-500">Maximum rows returned: 100</p>
           <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileChange} />
@@ -65,26 +65,26 @@ export default function UploadBox() {
 
         {error && <p role="alert" className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-medium text-red-700">{error}</p>}
 
-        <button type="button" onClick={handleUpload} disabled={loading} className="mt-6 w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-400">
+        <button type="button" onClick={handleUpload} disabled={loading} className="mt-6 w-full rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-4 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-violet-500 disabled:cursor-wait disabled:opacity-60">
           {loading ? "Analyzing…" : "Analyze Orders"}
         </button>
       </div>
 
       {result && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-950">Analysis Result</h2>
+        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+          <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><CheckCircle2 size={20} /></span><h2 className="text-lg font-bold text-slate-950">Analysis complete</h2></div>
           <p className="mt-1 text-sm text-slate-500">{result.uploaded_file} analyzed successfully.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-blue-50 p-4"><p className="text-xs text-blue-700">Orders</p><p className="mt-1 text-2xl font-bold text-blue-950">{result.risk_summary.total_orders}</p></div>
-            <div className="rounded-2xl bg-green-50 p-4"><p className="text-xs text-green-700">Net Profit</p><p className="mt-1 text-2xl font-bold text-green-950">৳{Number(result.profit_summary.net_profit).toLocaleString()}</p></div>
-            <div className="rounded-2xl bg-purple-50 p-4"><p className="text-xs text-purple-700">Restock Needed</p><p className="mt-1 text-2xl font-bold text-purple-950">{result.stock_summary.restock_needed}</p></div>
+            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-blue-700">Orders</p><p className="mt-1 text-2xl font-bold text-blue-950">{result.risk_summary.total_orders}</p></div>
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Net Profit</p><p className="mt-1 text-2xl font-bold text-emerald-950">৳{Number(result.profit_summary.net_profit).toLocaleString()}</p></div>
+            <div className="rounded-2xl border border-violet-100 bg-violet-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-violet-700">Restock Needed</p><p className="mt-1 text-2xl font-bold text-violet-950">{result.stock_summary.restock_needed}</p></div>
           </div>
           <div className="mt-6 overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b text-slate-500"><tr><th className="py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Action</th></tr></thead>
-              <tbody className="divide-y">
+            <table className="w-full min-w-[680px] text-left text-sm">
+              <thead className="border-b bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-3 py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Action</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
                 {result.risk_orders.map((order) => (
-                  <tr key={order.order_id}><td className="py-4 font-semibold">{order.order_id}</td><td>{order.product_name}</td><td>৳{Number(order.amount).toLocaleString()}</td><td><RiskBadge level={order.risk_level} /></td><td>{order.suggested_action}</td></tr>
+                  <tr key={order.order_id} className="transition hover:bg-blue-50/40"><td className="px-3 py-4 font-semibold">{order.order_id}</td><td>{order.product_name}</td><td>৳{Number(order.amount).toLocaleString()}</td><td><RiskBadge level={order.risk_level} /></td><td>{order.suggested_action}</td></tr>
                 ))}
               </tbody>
             </table>

@@ -4,11 +4,11 @@ import { Download, Info } from "lucide-react";
 
 export default function UploadPage() {
   return (
-    <main className="min-h-screen bg-slate-100">
+    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0">
       <Sidebar />
 
-      <section className="lg:pl-72">
-        <header className="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur">
+      <section className="lg:pl-64">
+        <header className="border-b border-white/70 bg-white/70 px-6 py-6 backdrop-blur-xl">
           <h1 className="text-2xl font-bold text-slate-950">Upload Orders</h1>
           <p className="mt-1 text-sm text-slate-500">
             Upload seller order data and let TradeMind AI generate business insights.
