@@ -26,11 +26,11 @@ export default async function DashboardPage() {
     risk.total_orders ? Math.round(((value || 0) / risk.total_orders) * 100) : 0;
 
   return (
-    <main className="min-h-screen bg-slate-100">
+    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0">
       <Sidebar />
 
-      <section className="lg:pl-72">
-        <header className="border-b border-slate-200 bg-white/80 px-6 py-5 backdrop-blur">
+      <section className="lg:pl-64">
+        <header className="border-b border-white/70 bg-white/70 px-6 py-6 backdrop-blur-xl">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div>
               <h1 className="text-2xl font-bold text-slate-950">Dashboard</h1>
@@ -151,15 +151,15 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
             <h2 className="text-lg font-semibold text-slate-950">Recent Risky Orders</h2>
             <p className="mt-1 text-sm text-slate-500">
               Orders that need confirmation before shipping.
             </p>
 
             <div className="mt-6 overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b text-slate-500">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-wider text-slate-500">
                   <tr>
                     <th className="py-3">Order ID</th>
                     <th>Product</th>
@@ -170,9 +170,9 @@ export default async function DashboardPage() {
                   </tr>
                 </thead>
 
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-slate-100">
                   {orders.map((order) => (
-                    <tr key={order.order_id}>
+                    <tr key={order.order_id} className="transition hover:bg-blue-50/40">
                       <td className="py-4 font-semibold text-slate-900">
                         {order.order_id}
                       </td>
