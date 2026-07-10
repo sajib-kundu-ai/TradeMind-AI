@@ -1,6 +1,6 @@
 import Sidebar from "@/components/Sidebar";
 import UploadBox from "@/components/UploadBox";
-import { Download, Info } from "lucide-react";
+import { FileDown, Info, PackageCheck, ShieldCheck, TrendingUp } from "lucide-react";
 
 export default function UploadPage() {
   return (
@@ -46,17 +46,23 @@ export default function UploadPage() {
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
-              <Download size={24} />
-
-              <h2 className="mt-4 text-lg font-bold">Sample CSV</h2>
-
-              <p className="mt-2 text-sm text-slate-400">
-                Use our sample dataset to test ReturnGuard AI quickly.
-              </p>
-
-              <a href="http://127.0.0.1:8000/api/sample-orders" className="mt-5 block w-full rounded-2xl bg-white px-5 py-3 text-center text-sm font-semibold text-slate-950 transition hover:bg-slate-200">
-                Download Sample
-              </a>
+              <h2 className="text-lg font-bold">What TradeMind AI analyzes</h2>
+              <div className="mt-5 space-y-4">
+                {[
+                  [ShieldCheck, "ReturnGuard AI", "Risky order detection and verification actions."],
+                  [TrendingUp, "ProfitDoctor", "Sales, cost, shipping, and margin analysis."],
+                  [PackageCheck, "StockMind", "Stock-out forecasts and restock suggestions."],
+                  [FileDown, "Reports", "Downloadable business insights for review."],
+                ].map(([Icon, title, description]) => (
+                  <div key={title} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.05] p-3">
+                    <Icon className="mt-0.5 shrink-0 text-blue-300" size={18} />
+                    <div>
+                      <p className="text-sm font-semibold">{title}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-400">{description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

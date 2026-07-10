@@ -5,6 +5,12 @@ import { getDemoAnalysis } from "@/lib/api";
 import { AlertTriangle, TrendingUp, WalletCards } from "lucide-react";
 
 const money = (value) => `৳${Number(value || 0).toLocaleString()}`;
+const compactMoney = (value) => {
+  const amount = Number(value || 0);
+  if (Math.abs(amount) >= 1000000) return `৳${(amount / 1000000).toFixed(1)}M`;
+  if (Math.abs(amount) >= 1000) return `৳${(amount / 1000).toFixed(1)}K`;
+  return money(amount);
+};
 
 export default async function ProfitPage() {
   let data = null;
@@ -15,19 +21,26 @@ export default async function ProfitPage() {
   const best = products[0];
   const lowMargin = products.find((product) => product.status === "Low Margin");
   const maxProfit = Math.max(...products.map((product) => Math.max(product.net_profit, 0)), 1);
+  const totalSales = Number(summary.total_sales || 1);
+  const breakdown = [
+    ["Sales", summary.total_sales, "bg-blue-500"],
+    ["Cost", summary.total_cost, "bg-violet-500"],
+    ["Shipping", summary.total_shipping, "bg-amber-500"],
+    ["Profit", summary.net_profit, "bg-emerald-500"],
+  ];
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0"><Sidebar /><section className="lg:pl-64">
       <header className="border-b border-white/70 bg-white/70 px-6 py-6 backdrop-blur-xl"><h1 className="text-2xl font-bold tracking-tight text-slate-950">ProfitDoctor</h1><p className="mt-1 text-sm text-slate-500">Analyze sales, cost, shipping, profit margin, and low-profit products.</p></header>
       <div className="space-y-6 p-6">
         {error && <p className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">Could not load profit analysis: {error}</p>}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><StatCard title="Total Sales" value={money(summary.total_sales)} subtitle="Demo dataset" tone="blue" /><StatCard title="Total Cost" value={money(summary.total_cost)} subtitle="Product cost" tone="purple" /><StatCard title="Net Profit" value={money(summary.net_profit)} subtitle="After shipping" tone="green" /><StatCard title="Profit Margin" value={`${summary.profit_margin || 0}%`} subtitle="Overall margin" tone="blue" /></div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"><StatCard title="Total Sales" value={compactMoney(summary.total_sales)} subtitle="Demo dataset" tone="blue" /><StatCard title="Total Cost" value={compactMoney(summary.total_cost)} subtitle="Product cost" tone="purple" /><StatCard title="Net Profit" value={compactMoney(summary.net_profit)} subtitle="After shipping" tone="green" /><StatCard title="Profit Margin" value={`${summary.profit_margin || 0}%`} subtitle="Overall margin" tone="blue" /></div>
         <div className="grid gap-6 xl:grid-cols-3">
           <ChartCard title="Profit Performance" subtitle="Top product profit overview"><div className="space-y-5">{products.slice(0, 5).map((product) => <div key={`${product.product_name}-${product.product_category}`}><div className="mb-2 flex justify-between text-sm"><span className="font-medium text-slate-700">{product.product_name}</span><span className="text-slate-500">{money(product.net_profit)}</span></div><div className="h-3 rounded-full bg-slate-100"><div className="h-3 rounded-full bg-green-500" style={{ width: `${Math.max((product.net_profit / maxProfit) * 100, 0)}%` }} /></div></div>)}{products.length === 0 && <p className="text-sm text-slate-500">No product data found.</p>}</div></ChartCard>
+          <ChartCard title="Financial Breakdown" subtitle="Sales, cost, shipping and retained profit"><div className="space-y-5">{breakdown.map(([label, value, color]) => <div key={label}><div className="mb-2 flex justify-between text-sm"><span className="font-medium text-slate-700">{label}</span><span className="text-slate-500">{money(value)}</span></div><div className="h-3 rounded-full bg-slate-100"><div className={`h-3 rounded-full ${color}`} style={{ width: `${Math.min(Math.abs(Number(value || 0)) / totalSales * 100, 100)}%` }} /></div></div>)}</div></ChartCard>
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><WalletCards className="text-green-600" size={28} /><h2 className="mt-4 font-bold text-slate-950">Best Profit Product</h2><p className="mt-2 text-sm text-slate-500">{best ? `${best.product_name} has the highest net profit in this dataset.` : "No product data available."}</p><div className="mt-5 rounded-2xl bg-green-50 p-4"><p className="text-sm text-green-700">Profit</p><p className="mt-1 text-3xl font-bold text-green-800">{money(best?.net_profit)}</p></div></div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><AlertTriangle className="text-red-600" size={28} /><h2 className="mt-4 font-bold text-slate-950">Low Margin Alert</h2><p className="mt-2 text-sm text-slate-500">{lowMargin ? `${lowMargin.product_name} is below the 15% healthy-margin threshold.` : "No low-margin products found."}</p><div className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-medium text-red-800">{lowMargin ? "Review pricing, product cost, or shipping cost." : "Margins currently look healthy."}</div></div>
         </div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><TrendingUp className="text-blue-600" size={24} /><div><h2 className="text-lg font-bold text-slate-950">Product-wise Profit Table</h2><p className="mt-1 text-sm text-slate-500">Sales, cost, shipping, profit and margin breakdown.</p></div></div><div className="mt-6 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b text-slate-500"><tr><th className="py-3">Product</th><th>Sales</th><th>Cost</th><th>Shipping</th><th>Profit</th><th>Margin</th><th>Status</th></tr></thead><tbody className="divide-y">{products.map((product) => <tr key={`${product.product_name}-${product.product_category}`}><td className="py-4 font-semibold text-slate-900">{product.product_name}</td><td>{money(product.total_sales)}</td><td>{money(product.total_cost)}</td><td>{money(product.total_shipping)}</td><td className="font-semibold text-green-700">{money(product.net_profit)}</td><td>{product.profit_margin}%</td><td><span className={product.status === "Healthy" ? "rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700" : "rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700"}>{product.status}</span></td></tr>)}</tbody></table>{products.length === 0 && <p className="py-8 text-center text-sm text-slate-500">No product data found.</p>}</div></div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div className="flex items-center gap-3"><TrendingUp className="text-blue-600" size={24} /><div><h2 className="text-lg font-bold text-slate-950">Product-wise Profit Table</h2><p className="mt-1 text-sm text-slate-500">Low-margin products are highlighted for pricing or cost review.</p></div></div><div className="mt-6 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b text-slate-500"><tr><th className="py-3">Product</th><th>Sales</th><th>Cost</th><th>Shipping</th><th>Profit</th><th>Margin</th><th>Status</th></tr></thead><tbody className="divide-y">{products.map((product) => <tr key={`${product.product_name}-${product.product_category}`} className={product.status === "Low Margin" ? "bg-red-50/60" : "transition hover:bg-blue-50/40"}><td className="py-4 font-semibold text-slate-900">{product.product_name}</td><td>{money(product.total_sales)}</td><td>{money(product.total_cost)}</td><td>{money(product.total_shipping)}</td><td className="font-semibold text-green-700">{money(product.net_profit)}</td><td>{product.profit_margin}%</td><td><span className={product.status === "Healthy" ? "rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700" : "rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700"}>{product.status}</span></td></tr>)}</tbody></table>{products.length === 0 && <p className="py-8 text-center text-sm text-slate-500">No product data found.</p>}</div></div>
       </div>
     </section></main>
   );

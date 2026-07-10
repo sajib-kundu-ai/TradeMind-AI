@@ -61,7 +61,13 @@ function LoginContent() {
     setError("");
     try {
       const data = await verifyOtp(email.trim(), otp);
+      if (!data.access_token) {
+        throw new Error("Login failed. Please request a new OTP and try again.");
+      }
+
       window.localStorage.setItem("trademind_token", data.access_token);
+      window.localStorage.setItem("trademind_user_email", data.email || email.trim());
+      window.dispatchEvent(new Event("trademind:auth-changed"));
       router.replace(destination);
     } catch (requestError) {
       setError(requestError.message);

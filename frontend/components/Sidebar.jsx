@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
 import {
   BarChart3,
   Upload,
@@ -10,7 +11,10 @@ import {
   PackageCheck,
   FileDown,
   LogOut,
+  User,
 } from "lucide-react";
+
+const userEmailKey = "trademind_user_email";
 
 const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
@@ -21,12 +25,37 @@ const menuItems = [
   { name: "Reports", href: "/reports", icon: FileDown },
 ];
 
+function subscribeToUserChanges(callback) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("trademind:auth-changed", callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("trademind:auth-changed", callback);
+  };
+}
+
+function getUserEmailSnapshot() {
+  return window.localStorage.getItem(userEmailKey) || "Signed in user";
+}
+
+function getServerUserEmailSnapshot() {
+  return "Signed in user";
+}
+
 export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const userEmail = useSyncExternalStore(
+    subscribeToUserChanges,
+    getUserEmailSnapshot,
+    getServerUserEmailSnapshot
+  );
 
   function handleLogout() {
     window.localStorage.removeItem("trademind_token");
+    window.localStorage.removeItem(userEmailKey);
+    window.dispatchEvent(new Event("trademind:auth-changed"));
     router.replace("/login");
   }
 
@@ -67,10 +96,17 @@ export default function Sidebar() {
       </nav>
 
       <div className="absolute bottom-5 left-4 right-4 space-y-3 rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-4 backdrop-blur">
-        <p className="text-sm font-semibold">Your AI command center</p>
-        <p className="text-xs leading-5 text-slate-400">
-          Order risk, profit analytics and stock intelligence in one dashboard.
-        </p>
+        <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/15 p-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
+            <User size={17} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">User</p>
+            <p className="truncate text-sm font-medium text-slate-200" title={userEmail}>
+              {userEmail}
+            </p>
+          </div>
+        </div>
         <button
           type="button"
           onClick={handleLogout}

@@ -9,6 +9,7 @@ export default async function ReturnGuardPage() {
   let error = "";
   try { data = await getDemoAnalysis(100); } catch (requestError) { error = requestError.message; }
   const summary = data?.risk_summary || {};
+  const verificationQueue = Number(summary.high_risk || 0) + Number(summary.medium_risk || 0);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0"><Sidebar /><section className="lg:pl-64">
@@ -20,7 +21,7 @@ export default async function ReturnGuardPage() {
         </div>
         <div className="grid gap-6 xl:grid-cols-3">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><ShieldCheck className="text-blue-600" size={28} /><h2 className="mt-4 font-bold text-slate-950">Explainable AI</h2><p className="mt-2 text-sm text-slate-500">Every risk score includes clear reason tags such as COD, unverified phone, high amount, or long distance.</p></div>
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><AlertTriangle className="text-red-600" size={28} /><h2 className="mt-4 font-bold text-slate-950">Verify First</h2><p className="mt-2 text-sm text-slate-500">The system recommends low-friction verification before shipping instead of cancelling orders.</p></div>
+          <div className="rounded-3xl border border-red-100 bg-red-50/70 p-6 shadow-sm"><AlertTriangle className="text-red-600" size={28} /><h2 className="mt-4 font-bold text-slate-950">Verification Queue</h2><p className="mt-2 text-sm text-slate-500">{verificationQueue} high or medium risk orders should be confirmed before shipping.</p><div className="mt-4 rounded-2xl bg-white/70 p-4 text-sm font-semibold text-red-700">Prioritize phone/address confirmation for high-value COD orders.</div></div>
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><CheckCircle2 className="text-green-600" size={28} /><h2 className="mt-4 font-bold text-slate-950">Action Suggestions</h2><p className="mt-2 text-sm text-slate-500">Each order receives a practical action based on its calculated risk level.</p></div>
         </div>
         <RiskTable orders={data?.risk_orders || []} />
