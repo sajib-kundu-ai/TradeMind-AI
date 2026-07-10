@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileDown, PackageCheck, ShieldCheck, TrendingUp } from "lucide-react";
-import { getDemoAnalysis, getLatestAnalysis } from "@/lib/api";
+import { FileDown, FileText, PackageCheck, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import { getLatestAnalysis } from "@/lib/api";
+import { readStoredAnalysis, saveStoredAnalysis } from "@/lib/analysisSource";
 
 function escapeCsv(value) {
   const text = String(value ?? "");
@@ -24,12 +25,7 @@ function downloadCsv(filename, content) {
 }
 
 function readLatestAnalysis() {
-  try {
-    const stored = window.localStorage.getItem("trademind_latest_analysis");
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
+  return readStoredAnalysis();
 }
 
 function readToken() {
@@ -40,12 +36,12 @@ function readToken() {
   }
 }
 
-export default function ReportsClient({ initialData }) {
+export default function ReportsClient() {
   const [data, setData] = useState(() => {
-    if (typeof window === "undefined") return initialData;
-    return readLatestAnalysis() || initialData;
+    if (typeof window === "undefined") return null;
+    return readStoredAnalysis();
   });
-  const [dataSource, setDataSource] = useState("Demo dataset");
+  const [dataSource, setDataSource] = useState(() => (data ? "Uploaded analysis" : "No analysis yet"));
   const [generatedAt, setGeneratedAt] = useState(() => new Date());
   const [error, setError] = useState("");
 
@@ -55,23 +51,25 @@ export default function ReportsClient({ initialData }) {
       try {
         const latest = await getLatestAnalysis(token);
         setData(latest);
-        window.localStorage.setItem("trademind_latest_analysis", JSON.stringify(latest));
+        saveStoredAnalysis(latest);
         setDataSource("Latest saved analysis");
         setGeneratedAt(new Date(latest.created_at || Date.now()));
         return;
       } catch {
-        setDataSource("Demo dataset");
+        // Continue to uploaded-analysis fallback.
       }
     }
 
-    try {
-      const fresh = await getDemoAnalysis(100);
-      setData(fresh);
-      setDataSource("Demo dataset");
-      setGeneratedAt(new Date());
-    } catch (requestError) {
-      setError(requestError.message);
+    const stored = readLatestAnalysis();
+    if (stored) {
+      setData(stored);
+      setDataSource("Uploaded analysis");
+      setGeneratedAt(new Date(stored.created_at || Date.now()));
+      return;
     }
+
+    setData(null);
+    setDataSource("No analysis yet");
   }, []);
 
   useEffect(() => {
@@ -131,6 +129,13 @@ export default function ReportsClient({ initialData }) {
     },
   ], [data]);
 
+  const smartSuggestions = data?.smart_suggestions || {};
+  const hasActionPlan = Boolean(
+    smartSuggestions.overall_health ||
+    smartSuggestions.priority_actions?.length ||
+    smartSuggestions.seller_next_steps?.length
+  );
+
   return (
     <div className="space-y-7 p-6">
       {error && <p className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">Could not load report data: {error}</p>}
@@ -140,12 +145,61 @@ export default function ReportsClient({ initialData }) {
         <div className="relative max-w-2xl">
           <span className="inline-flex rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200">Report center</span>
           <h2 className="mt-4 text-3xl font-bold tracking-tight">Turn analysis into shareable CSV insight.</h2>
-          <p className="mt-3 text-sm leading-7 text-slate-400">Exports use your latest uploaded analysis when available, otherwise the live demo dataset.</p>
+          <p className="mt-3 text-sm leading-7 text-slate-400">Exports use your latest saved or uploaded analysis. Demo data is only loaded from the Dashboard preview.</p>
           <span className="mt-5 inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-blue-100">{dataSource}</span>
         </div>
       </div>
 
       <div>
+        {!data && (
+          <section className="mb-7 rounded-3xl border border-white/70 bg-white/85 p-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+            <FileText className="mx-auto text-blue-600" size={32} />
+            <h2 className="mt-4 text-xl font-bold text-slate-950">No report data yet</h2>
+            <p className="mt-2 text-sm text-slate-500">Upload orders first.</p>
+          </section>
+        )}
+        {data && (
+          <>
+        <section className="mb-7 rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">AI Summary Preview</p>
+              <h2 className="mt-2 text-lg font-bold text-slate-950">Smart Action Plan</h2>
+            </div>
+            <span className="rounded-2xl bg-blue-50 p-2 text-blue-600"><Sparkles size={20} /></span>
+          </div>
+          {hasActionPlan ? (
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-2xl bg-blue-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">Overall Health</p>
+                <p className="mt-1 font-bold text-blue-950">{smartSuggestions.overall_health}</p>
+              </div>
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Priority Actions</p>
+                <p className="mt-1 text-sm text-slate-700">{smartSuggestions.priority_actions?.[0]}</p>
+              </div>
+              <div className="rounded-2xl bg-rose-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-rose-700">Risk Plan</p>
+                <p className="mt-1 text-sm text-rose-800">{smartSuggestions.risk_suggestions?.[0]}</p>
+              </div>
+              <div className="rounded-2xl bg-emerald-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Profit Plan</p>
+                <p className="mt-1 text-sm text-emerald-800">{smartSuggestions.profit_suggestions?.[0]}</p>
+              </div>
+              <div className="rounded-2xl bg-violet-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-violet-700">Stock Plan</p>
+                <p className="mt-1 text-sm text-violet-800">{smartSuggestions.stock_suggestions?.[0]}</p>
+              </div>
+              <div className="rounded-2xl bg-slate-950 p-4 text-white">
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Seller Next Steps</p>
+                <p className="mt-1 text-sm text-slate-200">{smartSuggestions.seller_next_steps?.[0]}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm font-medium text-amber-800">Upload or re-analyze orders to generate AI action plan.</p>
+          )}
+        </section>
+
         <div className="mb-4">
           <h2 className="text-lg font-bold text-slate-950">Available report downloads</h2>
           <p className="mt-1 text-sm text-slate-500">Data source: {dataSource} · Last generated timestamp: {generatedAt.toLocaleString()}</p>
@@ -161,7 +215,17 @@ export default function ReportsClient({ initialData }) {
               </button>
             </article>
           ))}
+          <article className="overflow-hidden rounded-3xl border border-dashed border-slate-300 bg-white/55 p-6 opacity-75">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500"><FileText size={23} /></div>
+            <h3 className="mt-6 text-lg font-bold text-slate-700">PDF Executive Report</h3>
+            <p className="mt-2 min-h-16 text-sm leading-6 text-slate-500">Polished PDF export for stakeholder review.</p>
+            <button type="button" disabled className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-200 px-4 py-3 text-sm font-semibold text-slate-500">
+              Coming soon
+            </button>
+          </article>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
