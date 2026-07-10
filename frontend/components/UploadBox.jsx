@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CheckCircle2, FileText, Loader2, UploadCloud } from "lucide-react";
 import { uploadAnalysis } from "@/lib/api";
 import RiskBadge from "./RiskBadge";
+import DonutChart from "./DonutChart";
 
 export default function UploadBox() {
   const [file, setFile] = useState(null);
@@ -88,12 +89,31 @@ export default function UploadBox() {
       {result && (
         <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
           <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><CheckCircle2 size={20} /></span><h2 className="text-lg font-bold text-slate-950">Analysis complete</h2></div>
-          <p className="mt-1 text-sm text-slate-500">{result.uploaded_file || file?.name} analyzed successfully and saved for dashboard/report exports.</p>
+          <p className="mt-1 text-sm text-slate-500">{result.uploaded_file || file?.name} analyzed successfully.</p>
+          <p className={`mt-4 rounded-2xl border p-4 text-sm font-medium ${result.saved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+            {result.saved
+              ? "Analysis saved to your history."
+              : "Analysis completed but was not saved because you are not logged in."}
+          </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-blue-700">Orders</p><p className="mt-1 text-2xl font-bold text-blue-950">{result.risk_summary.total_orders}</p></div>
             <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-rose-700">High Risk</p><p className="mt-1 text-2xl font-bold text-rose-950">{result.risk_summary.high_risk}</p></div>
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Net Profit</p><p className="mt-1 text-2xl font-bold text-emerald-950">৳{Number(result.profit_summary.net_profit).toLocaleString()}</p></div>
             <div className="rounded-2xl border border-violet-100 bg-violet-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-violet-700">Restock Needed</p><p className="mt-1 text-2xl font-bold text-violet-950">{result.stock_summary.restock_needed}</p></div>
+          </div>
+          <div className="mt-5">
+            <DonutChart
+              title="Risk Mix"
+              subtitle="Uploaded order risk distribution"
+              centerLabel="Orders"
+              centerValue={Number(result.risk_summary.total_orders || 0).toLocaleString()}
+              embedded
+              segments={[
+                { label: "Low Risk", value: result.risk_summary.low_risk, color: "#22c55e" },
+                { label: "Medium Risk", value: result.risk_summary.medium_risk, color: "#f59e0b" },
+                { label: "High Risk", value: result.risk_summary.high_risk, color: "#ef4444" },
+              ]}
+            />
           </div>
           <div className="mt-6 overflow-x-auto">
             <table className="w-full min-w-[680px] text-left text-sm">

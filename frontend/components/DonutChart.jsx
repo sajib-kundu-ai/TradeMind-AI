@@ -1,56 +1,90 @@
-function money(value) {
-  return `৳${Number(value || 0).toLocaleString()}`;
+const DEFAULT_COLORS = ["#2563eb", "#8b5cf6", "#f59e0b", "#22c55e", "#ef4444"];
+
+function compactValue(value) {
+  const amount = Number(value || 0);
+  if (Math.abs(amount) >= 1000000) return `${(amount / 1000000).toFixed(1)}M`;
+  if (Math.abs(amount) >= 1000) return `${(amount / 1000).toFixed(1)}K`;
+  return amount.toLocaleString();
 }
 
-export default function DonutChart({ profit = 0, cost = 0, shipping = 0 }) {
-  const safeProfit = Math.max(Number(profit || 0), 0);
-  const safeCost = Math.max(Number(cost || 0), 0);
-  const safeShipping = Math.max(Number(shipping || 0), 0);
+function segmentColor(segment, index) {
+  return segment.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length];
+}
 
-  const total = safeProfit + safeCost + safeShipping || 1;
+export default function DonutChart({
+  title,
+  subtitle,
+  segments = [],
+  centerLabel = "Total",
+  centerValue,
+  legend = true,
+  embedded = false,
+}) {
+  const safeSegments = segments
+    .map((segment, index) => ({
+      ...segment,
+      value: Math.max(Number(segment.value || 0), 0),
+      color: segmentColor(segment, index),
+    }))
+    .filter((segment) => segment.value > 0);
+  const total = safeSegments.reduce((sum, segment) => sum + segment.value, 0);
+  const hasData = total > 0;
 
-  const profitPercent = Math.round((safeProfit / total) * 100);
-  const costPercent = Math.round((safeCost / total) * 100);
-  const shippingPercent = 100 - profitPercent - costPercent;
+  let cursor = 0;
+  const gradientStops = safeSegments.map((segment) => {
+    const start = cursor;
+    const end = cursor + (segment.value / total) * 100;
+    cursor = end;
+    return `${segment.color} ${start}% ${end}%`;
+  });
+  const background = hasData
+    ? `conic-gradient(${gradientStops.join(", ")})`
+    : "conic-gradient(#e2e8f0 0% 100%)";
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <h2 className="text-lg font-bold text-slate-950">Sales Breakdown</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Cost, shipping and net profit share.
-      </p>
+    <div className={embedded ? "" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"}>
+      {(title || subtitle) && (
+        <div>
+          {title && <h2 className="text-lg font-bold text-slate-950">{title}</h2>}
+          {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+        </div>
+      )}
 
       <div className="mt-6 flex flex-col items-center gap-6 md:flex-row">
-        <div
-          className="relative h-48 w-48 rounded-full"
-          style={{
-            background: `conic-gradient(#22c55e 0% ${profitPercent}%, #8b5cf6 ${profitPercent}% ${
-              profitPercent + costPercent
-            }%, #f59e0b ${profitPercent + costPercent}% 100%)`,
-          }}
-        >
-          <div className="absolute inset-8 flex flex-col items-center justify-center rounded-full bg-white">
-            <p className="text-sm text-slate-500">Profit</p>
-            <p className="text-2xl font-bold text-slate-950">{profitPercent}%</p>
+        <div className="relative h-48 w-48 shrink-0 rounded-full p-4 shadow-inner" style={{ background }}>
+          <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white text-center shadow-[inset_0_0_0_1px_rgba(148,163,184,0.18)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{centerLabel}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-950">
+              {hasData ? centerValue || compactValue(total) : "No data"}
+            </p>
           </div>
         </div>
 
-        <div className="w-full space-y-4">
-          <div className="flex items-center justify-between rounded-2xl bg-green-50 p-4">
-            <span className="text-sm font-semibold text-green-700">Net Profit</span>
-            <span className="font-bold text-green-800">{money(safeProfit)}</span>
+        {legend && (
+          <div className="w-full space-y-3">
+            {hasData ? (
+              safeSegments.map((segment) => {
+                const percent = Math.round((segment.value / total) * 100);
+                return (
+                  <div key={segment.label} className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={`h-3 w-3 shrink-0 rounded-full ${segment.className || segment.colorClass || ""}`} style={{ backgroundColor: segment.color }} />
+                      <span className="truncate text-sm font-semibold text-slate-700">{segment.label}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-slate-950">{segment.displayValue || compactValue(segment.value)}</p>
+                      <p className="text-xs text-slate-500">{percent}%</p>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="rounded-2xl bg-slate-50 p-5 text-sm font-medium text-slate-500">
+                No chart data available yet.
+              </div>
+            )}
           </div>
-
-          <div className="flex items-center justify-between rounded-2xl bg-purple-50 p-4">
-            <span className="text-sm font-semibold text-purple-700">Product Cost</span>
-            <span className="font-bold text-purple-800">{money(safeCost)}</span>
-          </div>
-
-          <div className="flex items-center justify-between rounded-2xl bg-yellow-50 p-4">
-            <span className="text-sm font-semibold text-yellow-700">Shipping Cost</span>
-            <span className="font-bold text-yellow-800">{money(safeShipping)}</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
