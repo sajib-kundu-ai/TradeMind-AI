@@ -70,7 +70,7 @@ export default function UploadBox() {
     setLoading(true);
     setError("");
     try {
-      const analysis = await uploadAnalysis(file, 100);
+      const analysis = await uploadAnalysis(file, 300);
       setResult(analysis);
       saveStoredAnalysis(analysis);
     } catch (uploadError) {
@@ -118,7 +118,7 @@ export default function UploadBox() {
         <label className="group mt-8 flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-blue-200 bg-gradient-to-br from-blue-50/80 to-violet-50/70 px-6 py-14 text-center transition duration-300 hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-xl hover:shadow-blue-100/70">
           <span className="rounded-2xl bg-white p-4 text-blue-600 shadow-md transition group-hover:scale-105"><UploadCloud size={32} /></span>
           <p className="mt-4 text-sm font-semibold text-slate-700">Click to upload CSV or Excel file</p>
-          <p className="mt-1 text-xs text-slate-500">Maximum rows returned: 100</p>
+          <p className="mt-1 text-xs text-slate-500">Maximum rows returned: 300</p>
           <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileChange} />
         </label>
 
