@@ -1,5 +1,10 @@
 import pandas as pd
 
+try:
+    from ..ml.predict_model import predict_ml_risk, predict_ml_risks
+except ImportError:
+    from ml.predict_model import predict_ml_risk, predict_ml_risks
+
 
 def _yes_no(value):
     return str(value).strip().lower()
@@ -15,13 +20,13 @@ def _risk_level(score):
 
 def _suggest_action(level):
     if level == "High":
-        return "Call customer and verify before shipping"
+        return "Call customer, verify phone/address, and consider partial advance payment before shipping"
     if level == "Medium":
         return "Send confirmation message before shipping"
     return "Ship normally"
 
 
-def calculate_order_risk(order):
+def calculate_order_risk(order, ml_result=None):
     score = 0
     reasons = []
 
@@ -69,14 +74,25 @@ def calculate_order_risk(order):
         reasons.append("Late night order")
 
     score = min(score, 100)
-    level = _risk_level(score)
+    ml_result = ml_result or predict_ml_risk(order)
+    ml_score = int(ml_result.get("ml_score") or 0)
+    if ml_result.get("ml_available"):
+        final_score = round((score * 0.6) + (ml_score * 0.4), 2)
+    else:
+        final_score = float(score)
+    level = _risk_level(final_score)
 
     return {
         "order_id": order.get("order_id"),
         "product_name": order.get("product_name"),
         "product_category": order.get("product_category"),
         "amount": amount,
-        "risk_score": score,
+        "risk_score": final_score,
+        "rule_score": score,
+        "ml_score": ml_score,
+        "ml_confidence": ml_result.get("ml_probability", 0.0),
+        "ml_available": bool(ml_result.get("ml_available")),
+        "final_risk_score": final_score,
         "risk_level": level,
         "reasons": reasons,
         "suggested_action": _suggest_action(level),
@@ -93,7 +109,12 @@ def analyze_risk_dataframe(df):
     if missing:
         raise ValueError(f"Missing required columns: {', '.join(missing)}")
 
-    results = [calculate_order_risk(row) for row in df.to_dict(orient="records")]
+    records = df.to_dict(orient="records")
+    ml_results = predict_ml_risks(records)
+    results = [
+        calculate_order_risk(row, ml_result)
+        for row, ml_result in zip(records, ml_results)
+    ]
 
     total_orders = len(results)
     high_risk = len([item for item in results if item["risk_level"] == "High"])
