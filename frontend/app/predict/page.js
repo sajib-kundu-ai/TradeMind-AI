@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import RiskBadge from "@/components/RiskBadge";
+import ChatOrderPredictor from "@/components/ChatOrderPredictor";
 import { predictOrder } from "@/lib/api";
-import { BrainCircuit, Loader2, Sparkles } from "lucide-react";
+import { BrainCircuit, Loader2, ShieldCheck, Sparkles, UploadCloud } from "lucide-react";
 
 const initialForm = {
   order_id: "",
@@ -52,15 +54,73 @@ const fields = [
   ["discount_amount", "Discount", "number"],
 ];
 
+const sampleOrders = {
+  highRisk: {
+    order_id: "MANUAL-HIGH-001",
+    product_name: "Premium Smart Watch",
+    product_category: "Electronics",
+    payment_type: "COD",
+    shipping_speed: "Express",
+    amount: 8500,
+    quantity: 1,
+    customer_type: "New",
+    phone_verified: "No",
+    email_verified: "No",
+    address_complete: "No",
+    distance_km: 82,
+    previous_orders: 0,
+    previous_returns: 1,
+    order_hour: 23,
+    coupon_used: "Yes",
+    account_age_days: 6,
+    current_stock: 8,
+    avg_daily_sales: 3,
+    discount_amount: 500,
+  },
+  safe: {
+    order_id: "MANUAL-SAFE-001",
+    product_name: "Cotton T-Shirt",
+    product_category: "Fashion",
+    payment_type: "Prepaid",
+    shipping_speed: "Standard",
+    amount: 1200,
+    quantity: 2,
+    customer_type: "Returning",
+    phone_verified: "Yes",
+    email_verified: "Yes",
+    address_complete: "Yes",
+    distance_km: 8,
+    previous_orders: 6,
+    previous_returns: 0,
+    order_hour: 14,
+    coupon_used: "No",
+    account_age_days: 220,
+    current_stock: 70,
+    avg_daily_sales: 5,
+    discount_amount: 0,
+  },
+};
+
 function money(value) {
   return `৳${Number(value || 0).toLocaleString()}`;
 }
 
 export default function PredictPage() {
+  const [mode, setMode] = useState(() => {
+    if (typeof window === "undefined") return "form";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("mode") === "chat" ? "chat" : "form";
+  });
   const [form, setForm] = useState(initialForm);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  function updateMode(nextMode) {
+    setMode(nextMode);
+    const nextUrl = nextMode === "chat" ? "/predict?mode=chat" : "/predict";
+    window.history.replaceState(null, "", nextUrl);
+  }
 
   function updateField(name, value, type) {
     setForm((current) => ({
@@ -95,20 +155,50 @@ export default function PredictPage() {
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-slate-950">AI Predict</h1>
-              <p className="mt-1 text-sm text-slate-500">Manually score one order with rule logic and ML risk prediction.</p>
+              <p className="mt-1 text-sm text-slate-500">Use structured form input or conversational text input for order risk checks.</p>
             </div>
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"><BrainCircuit size={14} /> Manual risk check</span>
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"><BrainCircuit size={14} /> Rule engine + ML</span>
           </div>
         </header>
 
-        <div className="grid gap-6 p-6 xl:grid-cols-[1.25fr_0.9fr]">
-          <form onSubmit={handleSubmit} className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+        <div className="p-6">
+          <div className="mb-6 inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => updateMode("form")}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${mode === "form" ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+            >
+              Form Mode
+            </button>
+            <button
+              type="button"
+              onClick={() => updateMode("chat")}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${mode === "chat" ? "bg-slate-950 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+            >
+              Chat Mode
+            </button>
+          </div>
+
+          {mode === "chat" && <ChatOrderPredictor />}
+
+          {mode === "form" && (
+          <div className="grid gap-6 xl:grid-cols-[1.25fr_0.9fr]">
+            <form onSubmit={handleSubmit} className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <span className="rounded-2xl bg-slate-950 p-3 text-white"><Sparkles size={20} /></span>
               <div>
                 <h2 className="text-lg font-bold text-slate-950">Order Inputs</h2>
-                <p className="mt-1 text-sm text-slate-500">Enter fulfillment, customer, payment, and stock signals.</p>
+                <p className="mt-1 text-sm text-slate-500">Use this when you want to check one order before shipping without uploading a CSV.</p>
               </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => { setForm(sampleOrders.highRisk); setResult(null); }} className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
+                High-risk COD example
+              </button>
+              <button type="button" onClick={() => { setForm(sampleOrders.safe); setResult(null); }} className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100">
+                Safe prepaid example
+              </button>
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -132,9 +222,9 @@ export default function PredictPage() {
               {loading && <Loader2 className="animate-spin" size={17} />}
               {loading ? "Predicting..." : "Predict Risk"}
             </button>
-          </form>
+            </form>
 
-          <aside className="space-y-6">
+            <aside className="space-y-6">
             <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-bold text-slate-950">Prediction Result</h2>
               {!order && <p className="mt-3 text-sm leading-6 text-slate-500">Submit an order to see the blended risk score, reasons, and action plan.</p>}
@@ -176,10 +266,20 @@ export default function PredictPage() {
                   </div>
 
                   <p className="text-xs text-slate-500">Order amount: {money(order.amount)}. ML model status: {order.ml_available ? "available" : "rule fallback"}.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Link href="/upload" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100">
+                      <UploadCloud size={17} /> Upload bulk CSV
+                    </Link>
+                    <Link href="/returnguard" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                      <ShieldCheck size={17} /> View ReturnGuard queue
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
-          </aside>
+            </aside>
+          </div>
+          )}
         </div>
       </section>
     </main>
