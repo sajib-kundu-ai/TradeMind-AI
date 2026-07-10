@@ -12,6 +12,7 @@ const protectedPaths = [
   "/profit",
   "/stock",
   "/reports",
+  "/history",
 ];
 
 function subscribeToTokenChanges(callback) {

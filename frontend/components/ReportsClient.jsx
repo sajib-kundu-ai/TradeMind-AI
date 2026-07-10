@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileDown, PackageCheck, ShieldCheck, TrendingUp } from "lucide-react";
-import { getDemoAnalysis } from "@/lib/api";
+import { getDemoAnalysis, getLatestAnalysis } from "@/lib/api";
 
 function escapeCsv(value) {
   const text = String(value ?? "");
@@ -32,24 +32,53 @@ function readLatestAnalysis() {
   }
 }
 
+function readToken() {
+  try {
+    return window.localStorage.getItem("trademind_token");
+  } catch {
+    return null;
+  }
+}
+
 export default function ReportsClient({ initialData }) {
   const [data, setData] = useState(() => {
     if (typeof window === "undefined") return initialData;
     return readLatestAnalysis() || initialData;
   });
+  const [dataSource, setDataSource] = useState("Demo dataset");
   const [generatedAt, setGeneratedAt] = useState(() => new Date());
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!data) {
-      getDemoAnalysis(100)
-        .then((fresh) => {
-          setData(fresh);
-          setGeneratedAt(new Date());
-        })
-        .catch((requestError) => setError(requestError.message));
+  const loadPreferredData = useCallback(async () => {
+    const token = readToken();
+    if (token) {
+      try {
+        const latest = await getLatestAnalysis(token);
+        setData(latest);
+        window.localStorage.setItem("trademind_latest_analysis", JSON.stringify(latest));
+        setDataSource("Latest saved analysis");
+        setGeneratedAt(new Date(latest.created_at || Date.now()));
+        return;
+      } catch {
+        setDataSource("Demo dataset");
+      }
     }
-  }, [data]);
+
+    try {
+      const fresh = await getDemoAnalysis(100);
+      setData(fresh);
+      setDataSource("Demo dataset");
+      setGeneratedAt(new Date());
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      loadPreferredData();
+    });
+  }, [loadPreferredData]);
 
   const reports = useMemo(() => [
     {
@@ -112,13 +141,14 @@ export default function ReportsClient({ initialData }) {
           <span className="inline-flex rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200">Report center</span>
           <h2 className="mt-4 text-3xl font-bold tracking-tight">Turn analysis into shareable CSV insight.</h2>
           <p className="mt-3 text-sm leading-7 text-slate-400">Exports use your latest uploaded analysis when available, otherwise the live demo dataset.</p>
+          <span className="mt-5 inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-semibold text-blue-100">{dataSource}</span>
         </div>
       </div>
 
       <div>
         <div className="mb-4">
           <h2 className="text-lg font-bold text-slate-950">Available report downloads</h2>
-          <p className="mt-1 text-sm text-slate-500">Last generated/demo timestamp: {generatedAt.toLocaleString()}</p>
+          <p className="mt-1 text-sm text-slate-500">Data source: {dataSource} · Last generated timestamp: {generatedAt.toLocaleString()}</p>
         </div>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {reports.map(({ title, description, icon: Icon, tone, build, filename }) => (

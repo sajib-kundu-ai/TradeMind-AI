@@ -10,6 +10,7 @@ import {
   WalletCards,
   PackageCheck,
   FileDown,
+  History,
   LogOut,
   User,
 } from "lucide-react";
@@ -23,6 +24,7 @@ const menuItems = [
   { name: "ProfitDoctor", href: "/profit", icon: WalletCards },
   { name: "StockMind", href: "/stock", icon: PackageCheck },
   { name: "Reports", href: "/reports", icon: FileDown },
+  { name: "History", href: "/history", icon: History },
 ];
 
 function subscribeToUserChanges(callback) {

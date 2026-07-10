@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { RefreshCw, Search, Sparkles, X } from "lucide-react";
 import RiskBadge from "./RiskBadge";
 import StatCard from "./StatCard";
-import { getDemoAnalysis } from "@/lib/api";
+import { getDemoAnalysis, getLatestAnalysis } from "@/lib/api";
 
 const riskFilters = ["All", "High", "Medium", "Low"];
 
@@ -24,6 +24,14 @@ function readLatestAnalysis() {
   try {
     const stored = window.localStorage.getItem("trademind_latest_analysis");
     return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readToken() {
+  try {
+    return window.localStorage.getItem("trademind_token");
   } catch {
     return null;
   }
@@ -84,6 +92,7 @@ export default function DashboardCommandCenter({ initialData }) {
     if (typeof window === "undefined") return initialData;
     return readLatestAnalysis() || initialData;
   });
+  const [dataSource, setDataSource] = useState("Showing demo dataset");
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("score");
@@ -92,13 +101,42 @@ export default function DashboardCommandCenter({ initialData }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  const loadPreferredData = useCallback(async () => {
+    const token = readToken();
+    if (token) {
+      try {
+        const latest = await getLatestAnalysis(token);
+        setData(latest);
+        window.localStorage.setItem("trademind_latest_analysis", JSON.stringify(latest));
+        setDataSource("Showing latest saved analysis");
+        setLastUpdated(new Date(latest.created_at || Date.now()));
+        return;
+      } catch {
+        setDataSource("Showing demo dataset");
+      }
+    }
+
+    try {
+      const fresh = await getDemoAnalysis(100);
+      setData(fresh);
+      setDataSource("Showing demo dataset");
+      setLastUpdated(new Date());
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      loadPreferredData();
+    });
+  }, [loadPreferredData]);
+
   async function refreshData() {
     setRefreshing(true);
     setError("");
     try {
-      const fresh = await getDemoAnalysis(100);
-      setData(fresh);
-      setLastUpdated(new Date());
+      await loadPreferredData();
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -134,6 +172,7 @@ export default function DashboardCommandCenter({ initialData }) {
             <h2 className="mt-4 text-2xl font-bold tracking-tight">High-risk COD orders need verification before shipping.</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Profit margin is healthy at {profit.profit_margin || 0}%, but {risk.high_risk || 0} risky orders should be reviewed before fulfillment.</p>
             <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              <span className="rounded-full border border-white/10 bg-white/10 px-3 py-2 font-semibold text-blue-100">{dataSource}</span>
               <span>Last updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
               <button type="button" onClick={refreshData} disabled={refreshing} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/10 px-3 py-2 font-semibold text-white transition hover:bg-white/15 disabled:cursor-wait disabled:opacity-60">
                 <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} /> Refresh

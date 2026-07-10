@@ -23,10 +23,17 @@ export async function uploadAnalysis(file, limit = 20) {
   const formData = new FormData();
   formData.append("file", file);
 
+  const token =
+    typeof window !== "undefined"
+      ? window.localStorage.getItem("trademind_token")
+      : null;
+  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
   const response = await fetch(
     `${API_BASE_URL}/api/upload-analysis?limit=${limit}`,
     {
       method: "POST",
+      headers,
       body: formData,
     }
   );
@@ -56,6 +63,43 @@ export async function verifyOtp(email, otp) {
 
 export async function getCurrentUser(token) {
   const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export async function getHistory(token) {
+  const response = await fetch(`${API_BASE_URL}/api/history`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export async function getHistoryItem(token, id) {
+  const response = await fetch(`${API_BASE_URL}/api/history/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export async function deleteHistoryItem(token, id) {
+  const response = await fetch(`${API_BASE_URL}/api/history/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export async function getLatestAnalysis(token) {
+  const response = await fetch(`${API_BASE_URL}/api/latest-analysis`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
   });
