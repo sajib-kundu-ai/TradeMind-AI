@@ -1,11 +1,52 @@
-import { getDemoAnalysis, getLatestAnalysis } from "@/lib/api";
+import { getLatestAnalysis } from "@/lib/api";
+
+export function isDemoAnalysis(data) {
+  if (!data) return false;
+  const sourceText = `${data.source || ""} ${data.data_source || ""} ${data.source_label || ""}`.toLowerCase();
+  if (sourceText.includes("demo")) return true;
+  return Number(data.risk_summary?.total_orders || 0) >= 20000;
+}
+
+export function hasAnalysisData(data) {
+  return Boolean(
+    data?.risk_summary ||
+      data?.profit_summary ||
+      data?.stock_summary ||
+      data?.risk_orders?.length ||
+      data?.profit_products?.length ||
+      data?.stock_items?.length
+  );
+}
+
+export function getAnalysisStorageKey() {
+  try {
+    const email = (window.localStorage.getItem("trademind_user_email") || "").trim().toLowerCase();
+    return email ? `trademind_latest_analysis_${email}` : "";
+  } catch {
+    return "";
+  }
+}
 
 export function readStoredAnalysis() {
   try {
-    const stored = window.localStorage.getItem("trademind_latest_analysis");
-    return stored ? JSON.parse(stored) : null;
+    const storageKey = getAnalysisStorageKey();
+    if (!storageKey) return null;
+    const stored = window.localStorage.getItem(storageKey);
+    const parsed = stored ? JSON.parse(stored) : null;
+    return isDemoAnalysis(parsed) ? null : parsed;
   } catch {
     return null;
+  }
+}
+
+export function saveStoredAnalysis(analysis) {
+  try {
+    const storageKey = getAnalysisStorageKey();
+    if (!storageKey || !analysis || isDemoAnalysis(analysis)) return;
+    window.localStorage.setItem(storageKey, JSON.stringify(analysis));
+    window.localStorage.removeItem("trademind_latest_analysis");
+  } catch {
+    // Local cache is optional.
   }
 }
 
@@ -17,16 +58,16 @@ export function readAuthToken() {
   }
 }
 
-export async function loadPreferredAnalysis(limit = 100) {
+export async function loadPreferredAnalysis() {
   const token = readAuthToken();
 
   if (token) {
     try {
       const latest = await getLatestAnalysis(token);
-      window.localStorage.setItem("trademind_latest_analysis", JSON.stringify(latest));
+      saveStoredAnalysis(latest);
       return { data: latest, source: "Latest saved analysis" };
     } catch {
-      // Continue to local/demo fallback.
+      // Continue to local fallback.
     }
   }
 
@@ -35,6 +76,5 @@ export async function loadPreferredAnalysis(limit = 100) {
     return { data: stored, source: "Uploaded analysis" };
   }
 
-  const demo = await getDemoAnalysis(limit);
-  return { data: demo, source: "Demo dataset" };
+  return { data: null, source: "No analysis yet" };
 }
