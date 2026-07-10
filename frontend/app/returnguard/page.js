@@ -5,16 +5,20 @@ import Sidebar from "@/components/Sidebar";
 import RiskTable from "@/components/RiskTable";
 import StatCard from "@/components/StatCard";
 import DonutChart from "@/components/DonutChart";
-import { loadPreferredAnalysis, readStoredAnalysis } from "@/lib/analysisSource";
-import { AlertTriangle, CheckCircle2, ShieldCheck } from "lucide-react";
+import { loadPreferredAnalysis, readStoredAnalysis, saveStoredAnalysis } from "@/lib/analysisSource";
+import { reanalyzeLatestAnalysis } from "@/lib/api";
+import { AlertTriangle, BrainCircuit, CheckCircle2, Search, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 
 export default function ReturnGuardPage() {
   const [data, setData] = useState(() => {
     if (typeof window === "undefined") return null;
     return readStoredAnalysis();
   });
-  const [dataSource, setDataSource] = useState(() => (data ? "Uploaded analysis" : "Loading data"));
+  const [dataSource, setDataSource] = useState(() => (data ? "Uploaded analysis" : "No analysis yet"));
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [reanalyzing, setReanalyzing] = useState(false);
 
   useEffect(() => {
     queueMicrotask(async () => {
@@ -31,12 +35,38 @@ export default function ReturnGuardPage() {
   }, []);
 
   const summary = data?.risk_summary || {};
+  const orders = data?.risk_orders || [];
   const verificationQueue = Number(summary.high_risk || 0) + Number(summary.medium_risk || 0);
+  const fallbackCount = orders.filter((order) => !order.ml_available).length;
+  const legacyAnalysis = orders.length > 0 && fallbackCount >= Math.max(1, Math.ceil(orders.length * 0.8));
   const riskSegments = [
     { label: "Low Risk", value: summary.low_risk, color: "#22c55e" },
     { label: "Medium Risk", value: summary.medium_risk, color: "#f59e0b" },
     { label: "High Risk", value: summary.high_risk, color: "#ef4444" },
   ];
+
+  async function handleReanalyze() {
+    const token = window.localStorage.getItem("trademind_token");
+    if (!token) {
+      setError("Sign in to re-analyze saved analysis with the latest AI model.");
+      return;
+    }
+
+    setReanalyzing(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await reanalyzeLatestAnalysis(token);
+      setData(response.analysis);
+      setDataSource("Latest saved analysis");
+      saveStoredAnalysis(response.analysis);
+      setNotice("Analysis refreshed with latest ML model.");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setReanalyzing(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0">
@@ -53,6 +83,27 @@ export default function ReturnGuardPage() {
         </header>
         <div className="space-y-6 p-6">
           {error && <p className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">Could not load risk analysis: {error}</p>}
+          {notice && <p className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-sm font-medium text-emerald-700">{notice}</p>}
+          {!data && (
+            <div className="rounded-3xl border border-white/70 bg-white/85 p-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+              <ShieldCheck className="mx-auto text-blue-600" size={32} />
+              <h2 className="mt-4 text-xl font-bold text-slate-950">No risk data yet</h2>
+              <p className="mt-2 text-sm text-slate-500">Upload orders to generate risk analysis.</p>
+              <Link href="/upload" className="mt-5 inline-flex rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                Upload Orders
+              </Link>
+            </div>
+          )}
+          {data && (
+            <>
+          {legacyAnalysis && (
+            <div className="flex flex-col gap-3 rounded-3xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800 sm:flex-row sm:items-center sm:justify-between">
+              <span className="inline-flex items-center gap-2"><AlertTriangle size={17} /> This analysis was created before the ML model update. Re-analyze to add ML confidence.</span>
+              <button type="button" onClick={handleReanalyze} disabled={reanalyzing} className="w-fit rounded-2xl bg-amber-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-amber-800 disabled:cursor-wait disabled:opacity-60">
+                {reanalyzing ? "Re-analyzing..." : "Re-analyze with latest AI"}
+              </button>
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard title="Analyzed Orders" value={summary.total_orders || 0} subtitle={dataSource} tone="blue" />
             <StatCard title="High Risk" value={summary.high_risk || 0} subtitle="Manual verification" tone="red" />
@@ -73,7 +124,17 @@ export default function ReturnGuardPage() {
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><CheckCircle2 className="text-green-600" size={28} /><h2 className="mt-4 font-bold text-slate-950">Action Suggestions</h2><p className="mt-2 text-sm text-slate-500">Each order receives a practical action based on its calculated risk level.</p></div>
             </div>
           </div>
-          <RiskTable orders={data?.risk_orders || []} />
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={handleReanalyze} disabled={reanalyzing} className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60">
+              <BrainCircuit size={17} /> {reanalyzing ? "Re-analyzing..." : "Re-analyze with latest AI"}
+            </button>
+            <Link href="/predict" className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100">
+              <Search size={17} /> Check Single Order
+            </Link>
+          </div>
+          <RiskTable orders={orders} />
+            </>
+          )}
         </div>
       </section>
     </main>
