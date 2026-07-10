@@ -10,6 +10,27 @@ def _yes_no(value):
     return str(value).strip().lower()
 
 
+def _safe_float(value, default=0.0):
+    if value is None or pd.isna(value):
+        return default
+    if isinstance(value, str):
+        value = value.strip().replace(",", "")
+        if not value:
+            return default
+    try:
+        number = float(value)
+        return default if pd.isna(number) else number
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(_safe_float(value, default))
+    except (TypeError, ValueError):
+        return default
+
+
 def _risk_level(score):
     if score >= 75:
         return "High"
@@ -33,10 +54,10 @@ def calculate_order_risk(order, ml_result=None):
     payment_type = str(order.get("payment_type", "")).strip().lower()
     customer_type = str(order.get("customer_type", "")).strip().lower()
 
-    amount = float(order.get("amount", 0) or 0)
-    distance = float(order.get("distance_km", 0) or 0)
-    previous_returns = int(order.get("previous_returns", 0) or 0)
-    order_hour = int(order.get("order_hour", 12) or 12)
+    amount = _safe_float(order.get("amount"), 0)
+    distance = _safe_float(order.get("distance_km"), 0)
+    previous_returns = _safe_int(order.get("previous_returns"), 0)
+    order_hour = _safe_int(order.get("order_hour"), 12)
 
     phone_verified = _yes_no(order.get("phone_verified", "Yes"))
     address_complete = _yes_no(order.get("address_complete", "Yes"))
@@ -100,6 +121,8 @@ def calculate_order_risk(order, ml_result=None):
 
 
 def analyze_risk_dataframe(df):
+    df = df.copy()
+    df.columns = [str(column).strip() for column in df.columns]
     required_columns = [
         "order_id", "product_name", "product_category", "payment_type", "amount",
         "customer_type", "phone_verified", "address_complete", "distance_km",
