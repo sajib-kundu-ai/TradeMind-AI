@@ -3,17 +3,19 @@
 import { useMemo, useState } from "react";
 import ChartCard from "./ChartCard";
 
-const filters = ["All", "Critical", "Warning", "Healthy"];
+const filters = ["All", "Critical", "Warning", "Healthy", "No Sales Data"];
 
 function statusClass(status) {
   if (status === "Healthy") return "bg-green-100 text-green-700";
   if (status === "Warning") return "bg-yellow-100 text-yellow-700";
+  if (status === "No Sales Data") return "bg-slate-100 text-slate-700";
   return "bg-red-100 text-red-700";
 }
 
 function dayClass(item) {
   if (item.status === "Critical") return "bg-red-50 text-red-700";
   if (item.status === "Warning") return "bg-yellow-50 text-yellow-700";
+  if (item.status === "No Sales Data") return "bg-slate-100 text-slate-600";
   return "bg-green-50 text-green-700";
 }
 
@@ -55,9 +57,9 @@ export default function StockMindClient({ summary = {}, stocks = [] }) {
         </div>
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[820px] text-left text-sm">
-            <thead className="border-b text-slate-500"><tr><th className="py-3">Product</th><th>Current Stock</th><th>Daily Sales</th><th>Days Left</th><th>Suggestion</th><th>Status</th></tr></thead>
+            <thead className="border-b text-slate-500"><tr><th className="py-3">Product</th><th>Current Stock</th><th>Daily Sales</th><th>Days Left</th><th>Restock</th><th>Suggestion</th><th>Status</th></tr></thead>
             <tbody className="divide-y">
-              {filteredStocks.map((item) => <tr key={`${item.product_name}-${item.product_category}`} className="transition hover:bg-blue-50/40"><td className="py-4 font-semibold text-slate-900">{item.product_name}</td><td>{item.current_stock} pcs</td><td>{Number(item.avg_daily_sales).toFixed(1)} pcs/day</td><td><span className={`rounded-full px-3 py-1 text-xs font-bold ${dayClass(item)}`}>{item.days_left === 999 ? "No sales" : `${item.days_left} days`}</span></td><td className="font-medium text-slate-900">{item.suggestion}</td><td><span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(item.status)}`}>{item.status}</span></td></tr>)}
+              {filteredStocks.map((item) => <tr key={`${item.product_name}-${item.product_category}`} className="transition hover:bg-blue-50/40"><td className="py-4 font-semibold text-slate-900">{item.product_name}</td><td>{item.current_stock} pcs</td><td>{Number(item.avg_daily_sales).toFixed(1)} pcs/day</td><td><span className={`rounded-full px-3 py-1 text-xs font-bold ${dayClass(item)}`}>{item.days_left === null || item.days_left === undefined ? "No sales" : `${item.days_left} days`}</span></td><td>{item.recommended_restock || 0} pcs</td><td className="font-medium text-slate-900">{item.suggestion}</td><td><span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(item.status)}`}>{item.status}</span></td></tr>)}
             </tbody>
           </table>
           {filteredStocks.length === 0 && <p className="py-8 text-center text-sm text-slate-500">No stock items match this filter.</p>}
