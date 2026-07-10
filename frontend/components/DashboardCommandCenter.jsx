@@ -148,6 +148,9 @@ export default function DashboardCommandCenter({ initialData }) {
   const profit = data?.profit_summary || {};
   const stock = data?.stock_summary || {};
   const orders = useMemo(() => data?.risk_orders || [], [data]);
+  const smartSuggestions = data?.smart_suggestions || {};
+  const headlineSuggestion = smartSuggestions.priority_actions?.[0] || "High-risk COD orders need verification before shipping.";
+  const nextStep = smartSuggestions.seller_next_steps?.[0] || "Review the risk queue before fulfillment.";
   const healthScore = calculateHealthScore(risk, profit, stock);
   const riskPercent = (value) => risk.total_orders ? Math.round(((value || 0) / risk.total_orders) * 100) : 0;
 
@@ -156,7 +159,7 @@ export default function DashboardCommandCenter({ initialData }) {
     return orders
       .filter((order) => filter === "All" || order.risk_level === filter)
       .filter((order) => !needle || `${order.order_id} ${order.product_name}`.toLowerCase().includes(needle))
-      .sort((a, b) => sortBy === "amount" ? Number(b.amount || 0) - Number(a.amount || 0) : Number(b.risk_score || 0) - Number(a.risk_score || 0));
+      .sort((a, b) => sortBy === "amount" ? Number(b.amount || 0) - Number(a.amount || 0) : Number(b.final_risk_score ?? (b.risk_score || 0)) - Number(a.final_risk_score ?? (a.risk_score || 0)));
   }, [filter, orders, search, sortBy]);
 
   return (
@@ -169,8 +172,8 @@ export default function DashboardCommandCenter({ initialData }) {
           <div className="pointer-events-none absolute right-[-100px] top-[-160px] h-80 w-80 rounded-full bg-violet-600/25 blur-3xl" />
           <div className="relative">
             <span className="inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-200"><Sparkles size={14} /> AI insight</span>
-            <h2 className="mt-4 text-2xl font-bold tracking-tight">High-risk COD orders need verification before shipping.</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Profit margin is healthy at {profit.profit_margin || 0}%, but {risk.high_risk || 0} risky orders should be reviewed before fulfillment.</p>
+            <h2 className="mt-4 text-2xl font-bold tracking-tight">{headlineSuggestion}</h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">{nextStep} Profit margin is {profit.profit_margin || 0}% and {risk.high_risk || 0} high-risk orders should be reviewed before fulfillment.</p>
             <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-slate-400">
               <span className="rounded-full border border-white/10 bg-white/10 px-3 py-2 font-semibold text-blue-100">{dataSource}</span>
               <span>Last updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
@@ -230,9 +233,9 @@ export default function DashboardCommandCenter({ initialData }) {
         </div>
         <div className="mt-5 flex flex-wrap gap-2">{riskFilters.map((item) => <button key={item} type="button" onClick={() => setFilter(item)} className={`rounded-full px-4 py-2 text-sm font-semibold transition ${filter === item ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{item}</button>)}</div>
         <div className="mt-6 overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-wider text-slate-500"><tr><th className="py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Score</th><th>Suggested Action</th></tr></thead>
-            <tbody className="divide-y divide-slate-100">{filteredOrders.map((order) => <tr key={order.order_id} onClick={() => setSelectedOrder(order)} className="cursor-pointer transition hover:bg-blue-50/60"><td className="py-4 font-semibold text-slate-900">{order.order_id}</td><td>{order.product_name}</td><td>{money(order.amount)}</td><td><RiskBadge level={order.risk_level} /></td><td>{order.risk_score}/100</td><td className="font-medium text-slate-900">{order.suggested_action}</td></tr>)}</tbody>
+          <table className="w-full min-w-[840px] text-left text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-wider text-slate-500"><tr><th className="py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Final</th><th>ML</th><th>Suggested Action</th></tr></thead>
+            <tbody className="divide-y divide-slate-100">{filteredOrders.map((order) => <tr key={order.order_id} onClick={() => setSelectedOrder(order)} className="cursor-pointer transition hover:bg-blue-50/60"><td className="py-4 font-semibold text-slate-900">{order.order_id}</td><td>{order.product_name}</td><td>{money(order.amount)}</td><td><RiskBadge level={order.risk_level} /></td><td>{Number(order.final_risk_score ?? (order.risk_score || 0)).toFixed(0)}/100</td><td>{order.ml_available ? `${Math.round(Number(order.ml_confidence || 0) * 100)}%` : "Rule"}</td><td className="font-medium text-slate-900">{order.suggested_action}</td></tr>)}</tbody>
           </table>
           {filteredOrders.length === 0 && <p className="py-8 text-center text-sm text-slate-500">No matching orders found.</p>}
         </div>
