@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
+  BrainCircuit,
   FileText,
   Loader2,
   PackageCheck,
@@ -13,7 +14,8 @@ import {
   X,
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
-import { deleteHistoryItem, getHistory, getHistoryItem } from "@/lib/api";
+import { deleteHistoryItem, getHistory, getHistoryItem, reanalyzeHistoryItem } from "@/lib/api";
+import { readStoredAnalysis, saveStoredAnalysis } from "@/lib/analysisSource";
 
 function readToken() {
   try {
@@ -38,6 +40,9 @@ function DetailDrawer({ item, loading, onClose }) {
   const risk = item?.risk_summary || {};
   const profit = item?.profit_summary || {};
   const stock = item?.stock_summary || {};
+  const suggestions = item?.smart_suggestions || {};
+  const firstOrder = item?.risk_orders?.[0] || {};
+  const mlActive = Boolean(firstOrder.ml_available);
 
   return (
     <div className="fixed inset-0 z-[80] bg-slate-950/55 p-4 backdrop-blur-sm" onClick={onClose}>
@@ -78,6 +83,37 @@ function DetailDrawer({ item, loading, onClose }) {
                   <PackageCheck size={17} /> View Stock Report
                 </Link>
               </div>
+
+              <div className="mt-6 rounded-3xl border border-blue-100 bg-blue-50/70 p-5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-slate-950">AI Status</p>
+                    <p className="mt-1 text-sm text-slate-600">ML Status: {mlActive ? "Active" : "Fallback"}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {item?.analysis_version && <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700">{item.analysis_version}</span>}
+                    {item?.reanalyzed_at && <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700">Re-analyzed {formatDate(item.reanalyzed_at)}</span>}
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl bg-white/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Overall Health</p>
+                    <p className="mt-1 font-semibold text-slate-950">{suggestions.overall_health || "Upload or re-analyze orders to generate AI action plan."}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Priority Actions</p>
+                    <p className="mt-1 text-sm text-slate-700">{suggestions.priority_actions?.[0] || "No priority actions available yet."}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Seller Next Steps</p>
+                    <p className="mt-1 text-sm text-slate-700">{suggestions.seller_next_steps?.[0] || "Review the queue after re-analysis."}</p>
+                  </div>
+                  <div className="rounded-2xl bg-white/80 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">ML Confidence</p>
+                    <p className="mt-1 text-sm font-semibold text-slate-950">{mlActive ? `${Math.round(Number(firstOrder.ml_confidence || 0) * 100)}% on first order` : "Fallback"}</p>
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </aside>
@@ -91,6 +127,7 @@ export default function HistoryPage() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [reanalyzingId, setReanalyzingId] = useState(null);
   const [error, setError] = useState("");
 
   const totals = useMemo(() => ({
@@ -130,7 +167,7 @@ export default function HistoryPage() {
     try {
       const item = await getHistoryItem(token, id);
       setSelected(item);
-      window.localStorage.setItem("trademind_latest_analysis", JSON.stringify(item));
+      saveStoredAnalysis(item);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -149,6 +186,40 @@ export default function HistoryPage() {
       if (selected?.id === id) setSelected(null);
     } catch (requestError) {
       setError(requestError.message);
+    }
+  }
+
+  async function reanalyzeItem(id) {
+    const token = readToken();
+    if (!token) return;
+
+    setReanalyzingId(id);
+    setError("");
+    try {
+      const response = await reanalyzeHistoryItem(id, token);
+      const analysis = response.analysis;
+      const updatedSummary = {
+        id: analysis.id,
+        file_name: analysis.file_name,
+        total_orders: analysis.total_orders,
+        high_risk_orders: analysis.high_risk_orders,
+        net_profit: analysis.net_profit,
+        restock_needed: analysis.restock_needed,
+        created_at: analysis.created_at,
+        reanalyzed_at: analysis.reanalyzed_at,
+        analysis_version: analysis.analysis_version,
+      };
+      setItems((current) => current.map((item) => (item.id === id ? { ...item, ...updatedSummary } : item)));
+      if (selected?.id === id) setSelected(analysis);
+
+      const parsed = readStoredAnalysis();
+      if (parsed?.analysis_id === id || parsed?.id === id || items[0]?.id === id) {
+        saveStoredAnalysis(analysis);
+      }
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setReanalyzingId(null);
     }
   }
 
@@ -204,7 +275,7 @@ export default function HistoryPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[920px] text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50/80 text-xs uppercase tracking-wider text-slate-500">
-                    <tr><th className="px-6 py-4">File name</th><th>Total orders</th><th>High risk</th><th>Net profit</th><th>Restock needed</th><th>Created at</th><th className="text-right">Actions</th></tr>
+                    <tr><th className="px-6 py-4">File name</th><th>Total orders</th><th>High risk</th><th>Net profit</th><th>Restock needed</th><th>Updated</th><th className="text-right">Actions</th></tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {items.map((item) => (
@@ -214,10 +285,14 @@ export default function HistoryPage() {
                         <td><span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">{item.high_risk_orders}</span></td>
                         <td className="font-semibold text-emerald-700">{money(item.net_profit)}</td>
                         <td>{item.restock_needed}</td>
-                        <td className="text-slate-500">{formatDate(item.created_at)}</td>
+                        <td className="text-slate-500">{formatDate(item.reanalyzed_at || item.created_at)}</td>
                         <td>
                           <div className="flex justify-end gap-2 pr-6">
                             <button type="button" onClick={() => openDetails(item.id)} className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">View Details</button>
+                            <button type="button" onClick={() => reanalyzeItem(item.id)} disabled={reanalyzingId === item.id} className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60">
+                              {reanalyzingId === item.id ? <Loader2 className="animate-spin" size={14} /> : <BrainCircuit size={14} />}
+                              Re-analyze
+                            </button>
                             <button type="button" onClick={() => deleteItem(item.id)} className="rounded-xl border border-rose-100 bg-rose-50 p-2 text-rose-600 transition hover:bg-rose-100" aria-label={`Delete ${item.file_name}`}>
                               <Trash2 size={16} />
                             </button>
