@@ -1,19 +1,8 @@
 import Sidebar from "@/components/Sidebar";
 import ReportsClient from "@/components/ReportsClient";
-import { getDemoAnalysis } from "@/lib/api";
 import { LockKeyhole } from "lucide-react";
 
-async function loadReportsData() {
-  try {
-    return await getDemoAnalysis(100);
-  } catch {
-    return null;
-  }
-}
-
 export default async function ReportsPage() {
-  const data = await loadReportsData();
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0">
       <Sidebar />
@@ -30,7 +19,7 @@ export default async function ReportsPage() {
           </div>
         </header>
 
-        <ReportsClient initialData={data} />
+        <ReportsClient />
       </section>
     </main>
   );
