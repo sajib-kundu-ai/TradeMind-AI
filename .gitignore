@@ -32,3 +32,10 @@ Thumbs.db
 
 # IDE
 .vscode/
+
+# Kaggle raw datasets
+backend/data/raw/
+backend/data/training/
+backend/ml/*.joblib
+backend/ml/model_metrics.json
+backend/ml/feature_columns.json
