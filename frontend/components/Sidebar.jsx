@@ -11,6 +11,7 @@ import {
   PackageCheck,
   FileDown,
   History,
+  BrainCircuit,
   LogOut,
   User,
 } from "lucide-react";
@@ -20,6 +21,7 @@ const userEmailKey = "trademind_user_email";
 const menuItems = [
   { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
   { name: "Upload Orders", href: "/upload", icon: Upload },
+  { name: "AI Predict", href: "/predict", icon: BrainCircuit },
   { name: "ReturnGuard AI", href: "/returnguard", icon: ShieldCheck },
   { name: "ProfitDoctor", href: "/profit", icon: WalletCards },
   { name: "StockMind", href: "/stock", icon: PackageCheck },
