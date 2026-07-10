@@ -5,7 +5,9 @@ async function handleResponse(response) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.detail || data.error || `API request failed (${response.status})`);
+    const error = new Error(data.detail || data.error || `API request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
 
   return data;
@@ -37,6 +39,35 @@ export async function uploadAnalysis(file, limit = 20) {
       body: formData,
     }
   );
+
+  return handleResponse(response);
+}
+
+export async function uploadStockAnalysis(file, token, options = {}) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const merge = options.merge ?? true;
+  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 60000);
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/api/stock/upload-analysis?merge=${merge}`, {
+      method: "POST",
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Stock upload timed out. Try a smaller CSV/XLSX file.");
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   return handleResponse(response);
 }
@@ -79,6 +110,45 @@ export async function getHistory(token) {
   return handleResponse(response);
 }
 
+export async function getLatestStockAnalysis(token) {
+  const response = await fetch(`${API_BASE_URL}/api/stock/latest`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export async function getStockHistory(token) {
+  const response = await fetch(`${API_BASE_URL}/api/stock/history`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export async function getStockHistoryItem(id, token) {
+  const response = await fetch(`${API_BASE_URL}/api/stock/history/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export async function deleteStockHistoryItem(id, token) {
+  const response = await fetch(`${API_BASE_URL}/api/stock/history/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export const deleteStockHistory = deleteStockHistoryItem;
+
 export async function getHistoryItem(token, id) {
   const response = await fetch(`${API_BASE_URL}/api/history/${id}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -98,9 +168,31 @@ export async function deleteHistoryItem(token, id) {
   return handleResponse(response);
 }
 
+export async function reanalyzeHistoryItem(id, token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(`${API_BASE_URL}/api/history/${id}/reanalyze`, {
+    method: "POST",
+    headers,
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
 export async function getLatestAnalysis(token) {
   const response = await fetch(`${API_BASE_URL}/api/latest-analysis`, {
     headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
+
+export async function reanalyzeLatestAnalysis(token) {
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(`${API_BASE_URL}/api/latest-analysis/reanalyze`, {
+    method: "POST",
+    headers,
     cache: "no-store",
   });
 
@@ -112,6 +204,16 @@ export async function predictOrder(order) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(order),
+  });
+
+  return handleResponse(response);
+}
+
+export async function predictOrderText(message) {
+  const response = await fetch(`${API_BASE_URL}/api/predict-order-text`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
   });
 
   return handleResponse(response);
