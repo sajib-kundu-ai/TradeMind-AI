@@ -4,6 +4,7 @@ import shutil
 from uuid import uuid4
 
 import httpx
+import pandas as pd
 from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -16,8 +17,14 @@ try:
     from . import models as models
     from .services.risk_engine import analyze_risk_file, calculate_order_risk
     from .services.profit_engine import analyze_profit_file
-    from .services.stock_engine import analyze_stock_file
+    from .services.stock_engine import (
+        analyze_stock_file,
+        analyze_stock_records,
+        merge_stock_records,
+        read_stock_file_records,
+    )
     from .services.recommendation_engine import build_smart_suggestions
+    from .services.text_order_parser import parse_order_text
     from .services.auth_service import (
         AuthConfigurationError,
         create_access_token,
@@ -26,12 +33,21 @@ try:
     from .services.email_service import EmailConfigurationError, send_otp_email
     from .services.history_service import (
         create_analysis_run,
+        create_stock_analysis_run,
         delete_analysis_run,
-        get_analysis_run,
-        get_latest_analysis_run,
+        delete_stock_analysis_run,
+        get_analysis_run_for_user,
+        get_latest_analysis_for_user,
+        get_latest_stock_analysis_for_user,
+        get_stock_analysis_run_for_user,
         list_analysis_runs,
+        list_stock_analysis_runs,
+        reanalyze_saved_payload,
         serialize_analysis_run,
         serialize_analysis_summary,
+        serialize_stock_analysis_run,
+        serialize_stock_analysis_summary,
+        update_analysis_payload,
     )
     from .services.otp_service import create_otp, invalidate_otp, verify_otp
 except ImportError:
@@ -39,8 +55,14 @@ except ImportError:
     import models as models
     from services.risk_engine import analyze_risk_file, calculate_order_risk
     from services.profit_engine import analyze_profit_file
-    from services.stock_engine import analyze_stock_file
+    from services.stock_engine import (
+        analyze_stock_file,
+        analyze_stock_records,
+        merge_stock_records,
+        read_stock_file_records,
+    )
     from services.recommendation_engine import build_smart_suggestions
+    from services.text_order_parser import parse_order_text
     from services.auth_service import (
         AuthConfigurationError,
         create_access_token,
@@ -49,12 +71,21 @@ except ImportError:
     from services.email_service import EmailConfigurationError, send_otp_email
     from services.history_service import (
         create_analysis_run,
+        create_stock_analysis_run,
         delete_analysis_run,
-        get_analysis_run,
-        get_latest_analysis_run,
+        delete_stock_analysis_run,
+        get_analysis_run_for_user,
+        get_latest_analysis_for_user,
+        get_latest_stock_analysis_for_user,
+        get_stock_analysis_run_for_user,
         list_analysis_runs,
+        list_stock_analysis_runs,
+        reanalyze_saved_payload,
         serialize_analysis_run,
         serialize_analysis_summary,
+        serialize_stock_analysis_run,
+        serialize_stock_analysis_summary,
+        update_analysis_payload,
     )
     from services.otp_service import create_otp, invalidate_otp, verify_otp
 
@@ -107,6 +138,10 @@ class ManualOrderRequest(BaseModel):
     current_stock: float = 0
     avg_daily_sales: float = 0
     discount_amount: float = 0
+
+
+class TextPredictRequest(BaseModel):
+    message: str
 
 
 def normalized_email(email: EmailStr) -> str:
@@ -221,9 +256,25 @@ def sample_orders():
 @app.get("/api/model-metrics")
 def model_metrics():
     if not MODEL_METRICS_FILE.exists():
-        return {"ml_available": False, "detail": "ML model metrics are not available yet."}
+        return {
+            "ml_available": False,
+            "model_name": "Rule Engine fallback",
+            "message": "ML metrics are not available yet. Train the model first.",
+        }
     try:
-        return {"ml_available": True, **json.loads(MODEL_METRICS_FILE.read_text(encoding="utf-8"))}
+        metrics = json.loads(MODEL_METRICS_FILE.read_text(encoding="utf-8"))
+        return {
+            "ml_available": True,
+            "model_name": metrics.get("model_name") or "RandomForestClassifier",
+            "training_rows": metrics.get("training_rows"),
+            "test_rows": metrics.get("test_rows"),
+            "accuracy": metrics.get("accuracy"),
+            "precision": metrics.get("precision"),
+            "recall": metrics.get("recall"),
+            "f1": metrics.get("f1"),
+            "confusion_matrix": metrics.get("confusion_matrix"),
+            "top_features": metrics.get("top_features", []),
+        }
     except (OSError, json.JSONDecodeError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -253,6 +304,41 @@ def predict_order(request: ManualOrderRequest):
     }
 
 
+@app.post("/api/predict-order-text")
+def predict_order_text(request: TextPredictRequest):
+    message = request.message.strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+
+    parsed = parse_order_text(message)
+    parsed_order = parsed["parsed_order"]
+    result = calculate_order_risk(parsed_order)
+    suggestions = build_smart_suggestions(
+        {
+            "total_orders": 1,
+            "high_risk": 1 if result["risk_level"] == "High" else 0,
+            "medium_risk": 1 if result["risk_level"] == "Medium" else 0,
+            "low_risk": 1 if result["risk_level"] == "Low" else 0,
+        },
+        {"profit_margin": 0, "low_margin_products": 0},
+        {"restock_needed": 0, "critical_stock": 0},
+        [result],
+        [],
+        [],
+    )
+    return {
+        "source": "chat_input",
+        "message": message,
+        "parsed_order": parsed_order,
+        "detected_fields": parsed["detected_fields"],
+        "missing_fields": parsed["missing_fields"],
+        "parser_confidence": parsed["parser_confidence"],
+        "parser_notes": parsed["parser_notes"],
+        "order": result,
+        "smart_suggestions": suggestions,
+    }
+
+
 @app.get("/api/history")
 def history_list(
     email: str = Depends(current_user_email),
@@ -268,7 +354,7 @@ def history_detail(
     email: str = Depends(current_user_email),
     db: Session = Depends(get_db),
 ):
-    run = get_analysis_run(db, email, analysis_id)
+    run = get_analysis_run_for_user(db, analysis_id, email)
     if run is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
     return serialize_analysis_run(run)
@@ -280,7 +366,7 @@ def history_delete(
     email: str = Depends(current_user_email),
     db: Session = Depends(get_db),
 ):
-    run = get_analysis_run(db, email, analysis_id)
+    run = get_analysis_run_for_user(db, analysis_id, email)
     if run is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
     delete_analysis_run(db, run)
@@ -292,10 +378,49 @@ def latest_analysis(
     email: str = Depends(current_user_email),
     db: Session = Depends(get_db),
 ):
-    run = get_latest_analysis_run(db, email)
+    run = get_latest_analysis_for_user(db, email)
     if run is None:
         raise HTTPException(status_code=404, detail="No saved analysis found")
     return serialize_analysis_run(run)
+
+
+@app.post("/api/history/{analysis_id}/reanalyze")
+def history_reanalyze(
+    analysis_id: int,
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    run = get_analysis_run_for_user(db, analysis_id, email)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+
+    updated_payload = reanalyze_saved_payload(serialize_analysis_run(run))
+    if updated_payload.get("error"):
+        raise HTTPException(status_code=422, detail=updated_payload["error"])
+    updated_run = update_analysis_payload(db, analysis_id, email, updated_payload)
+    return {
+        "message": "Analysis re-analyzed with latest AI model",
+        "analysis": serialize_analysis_run(updated_run),
+    }
+
+
+@app.post("/api/latest-analysis/reanalyze")
+def latest_analysis_reanalyze(
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    run = get_latest_analysis_for_user(db, email)
+    if run is None:
+        raise HTTPException(status_code=404, detail="No saved analysis found")
+
+    updated_payload = reanalyze_saved_payload(serialize_analysis_run(run))
+    if updated_payload.get("error"):
+        raise HTTPException(status_code=422, detail=updated_payload["error"])
+    updated_run = update_analysis_payload(db, run.id, email, updated_payload)
+    return {
+        "message": "Latest analysis re-analyzed with latest AI model",
+        "analysis": serialize_analysis_run(updated_run),
+    }
 
 
 @app.post("/api/upload-analysis")
@@ -327,6 +452,7 @@ async def upload_analysis(
         await file.close()
         saved_path.unlink(missing_ok=True)
 
+    result["file_name"] = original_name
     result["uploaded_file"] = original_name
     result["saved"] = False
     result["analysis_id"] = None
@@ -343,3 +469,117 @@ async def upload_analysis(
         result["analysis_id"] = run.id
 
     return result
+
+
+@app.post("/api/stock/upload-analysis")
+async def upload_stock_analysis(
+    file: UploadFile = File(...),
+    merge: bool = Query(default=True),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+):
+    original_name = Path(file.filename or "upload").name
+    file_extension = Path(original_name).suffix.lower()
+
+    if file_extension not in [".csv", ".xlsx"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Only CSV and Excel .xlsx files are supported",
+        )
+
+    saved_path = UPLOAD_DIR / f"{uuid4().hex}{file_extension}"
+
+    try:
+        with saved_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        new_records = read_stock_file_records(str(saved_path))
+    except pd.errors.EmptyDataError as exc:
+        raise HTTPException(status_code=400, detail="Uploaded stock file is empty") from exc
+    except (pd.errors.ParserError, UnicodeDecodeError) as exc:
+        raise HTTPException(status_code=400, detail="Could not read stock file. Please upload a valid CSV or XLSX file") from exc
+    except ValueError as exc:
+        detail = str(exc)
+        status_code = 400 if detail.startswith("Missing required stock columns") else 422
+        raise HTTPException(status_code=status_code, detail=detail) from exc
+    except OSError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    finally:
+        await file.close()
+        saved_path.unlink(missing_ok=True)
+
+    user_email = optional_user_email(credentials)
+    merge_stats = None
+    result_records = new_records
+
+    if user_email and merge:
+        latest_run = get_latest_stock_analysis_for_user(db, user_email)
+        if latest_run is not None:
+            latest_payload = serialize_stock_analysis_run(latest_run)
+            existing_items = latest_payload.get("stock_items") or []
+            result_records, merge_stats = merge_stock_records(existing_items, new_records)
+
+    result = analyze_stock_records(result_records)
+    result["file_name"] = original_name
+    result["uploaded_file"] = original_name
+    result["saved"] = False
+    result["analysis_id"] = None
+    if merge_stats:
+        result["merged"] = True
+        result["merge_stats"] = merge_stats
+
+    if user_email:
+        run = create_stock_analysis_run(
+            db,
+            user_email=user_email,
+            file_name=original_name,
+            analysis=result,
+        )
+        result = serialize_stock_analysis_run(run)
+
+    return result
+
+
+@app.get("/api/stock/latest")
+def latest_stock_analysis(
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    run = get_latest_stock_analysis_for_user(db, email)
+    if run is None:
+        raise HTTPException(status_code=404, detail="No stock data found")
+    return serialize_stock_analysis_run(run)
+
+
+@app.get("/api/stock/history")
+def stock_history_list(
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    runs = list_stock_analysis_runs(db, email)
+    return [serialize_stock_analysis_summary(run) for run in runs]
+
+
+@app.get("/api/stock/history/{analysis_id}")
+def stock_history_detail(
+    analysis_id: int,
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    run = get_stock_analysis_run_for_user(db, analysis_id, email)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Stock analysis not found")
+    return serialize_stock_analysis_run(run)
+
+
+@app.delete("/api/stock/history/{analysis_id}")
+def stock_history_delete(
+    analysis_id: int,
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    run = get_stock_analysis_run_for_user(db, analysis_id, email)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Stock analysis not found")
+    delete_stock_analysis_run(db, run)
+    return {"message": "Stock analysis deleted successfully"}
