@@ -3,6 +3,7 @@ import shutil
 from uuid import uuid4
 
 import httpx
+from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile, Query
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +11,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, Field
 
 try:
+    from .database import get_db, init_db
+    from . import models as models
     from .services.risk_engine import analyze_risk_file
     from .services.profit_engine import analyze_profit_file
     from .services.stock_engine import analyze_stock_file
@@ -19,8 +22,19 @@ try:
         decode_current_user,
     )
     from .services.email_service import EmailConfigurationError, send_otp_email
+    from .services.history_service import (
+        create_analysis_run,
+        delete_analysis_run,
+        get_analysis_run,
+        get_latest_analysis_run,
+        list_analysis_runs,
+        serialize_analysis_run,
+        serialize_analysis_summary,
+    )
     from .services.otp_service import create_otp, invalidate_otp, verify_otp
 except ImportError:
+    from database import get_db, init_db
+    import models as models
     from services.risk_engine import analyze_risk_file
     from services.profit_engine import analyze_profit_file
     from services.stock_engine import analyze_stock_file
@@ -30,6 +44,15 @@ except ImportError:
         decode_current_user,
     )
     from services.email_service import EmailConfigurationError, send_otp_email
+    from services.history_service import (
+        create_analysis_run,
+        delete_analysis_run,
+        get_analysis_run,
+        get_latest_analysis_run,
+        list_analysis_runs,
+        serialize_analysis_run,
+        serialize_analysis_summary,
+    )
     from services.otp_service import create_otp, invalidate_otp, verify_otp
 
 app = FastAPI(title="TradeMind AI API")
@@ -47,6 +70,8 @@ DATA_FILE = BASE_DIR / "data" / "sample_orders.csv"
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 bearer_scheme = HTTPBearer(auto_error=False)
+
+init_db()
 
 
 class EmailRequest(BaseModel):
@@ -72,6 +97,17 @@ def current_user_email(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+
+def optional_user_email(
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        return None
+    try:
+        return decode_current_user(credentials.credentials)
+    except (AuthConfigurationError, ValueError):
+        return None
 
 
 def build_analysis(file_path: str, limit: int = 20):
@@ -144,10 +180,57 @@ def sample_orders():
     return FileResponse(DATA_FILE, filename="sample_orders.csv", media_type="text/csv")
 
 
+@app.get("/api/history")
+def history_list(
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    runs = list_analysis_runs(db, email)
+    return [serialize_analysis_summary(run) for run in runs]
+
+
+@app.get("/api/history/{analysis_id}")
+def history_detail(
+    analysis_id: int,
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    run = get_analysis_run(db, email, analysis_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    return serialize_analysis_run(run)
+
+
+@app.delete("/api/history/{analysis_id}")
+def history_delete(
+    analysis_id: int,
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    run = get_analysis_run(db, email, analysis_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Analysis not found")
+    delete_analysis_run(db, run)
+    return {"message": "Analysis deleted successfully"}
+
+
+@app.get("/api/latest-analysis")
+def latest_analysis(
+    email: str = Depends(current_user_email),
+    db: Session = Depends(get_db),
+):
+    run = get_latest_analysis_run(db, email)
+    if run is None:
+        raise HTTPException(status_code=404, detail="No saved analysis found")
+    return serialize_analysis_run(run)
+
+
 @app.post("/api/upload-analysis")
 async def upload_analysis(
     file: UploadFile = File(...),
     limit: int = Query(default=20, ge=1, le=100),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
 ):
     original_name = Path(file.filename or "upload").name
     file_extension = Path(original_name).suffix.lower()
@@ -172,5 +255,18 @@ async def upload_analysis(
         saved_path.unlink(missing_ok=True)
 
     result["uploaded_file"] = original_name
+    result["saved"] = False
+    result["analysis_id"] = None
+
+    user_email = optional_user_email(credentials)
+    if user_email:
+        run = create_analysis_run(
+            db,
+            user_email=user_email,
+            file_name=original_name,
+            analysis=result,
+        )
+        result["saved"] = True
+        result["analysis_id"] = run.id
 
     return result
