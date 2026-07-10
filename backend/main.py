@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 import shutil
 from uuid import uuid4
 
@@ -13,9 +14,10 @@ from pydantic import BaseModel, EmailStr, Field
 try:
     from .database import get_db, init_db
     from . import models as models
-    from .services.risk_engine import analyze_risk_file
+    from .services.risk_engine import analyze_risk_file, calculate_order_risk
     from .services.profit_engine import analyze_profit_file
     from .services.stock_engine import analyze_stock_file
+    from .services.recommendation_engine import build_smart_suggestions
     from .services.auth_service import (
         AuthConfigurationError,
         create_access_token,
@@ -35,9 +37,10 @@ try:
 except ImportError:
     from database import get_db, init_db
     import models as models
-    from services.risk_engine import analyze_risk_file
+    from services.risk_engine import analyze_risk_file, calculate_order_risk
     from services.profit_engine import analyze_profit_file
     from services.stock_engine import analyze_stock_file
+    from services.recommendation_engine import build_smart_suggestions
     from services.auth_service import (
         AuthConfigurationError,
         create_access_token,
@@ -67,6 +70,7 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "data" / "sample_orders.csv"
+MODEL_METRICS_FILE = BASE_DIR / "ml" / "model_metrics.json"
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -80,6 +84,29 @@ class EmailRequest(BaseModel):
 
 class OTPVerifyRequest(EmailRequest):
     otp: str = Field(pattern=r"^\d{6}$")
+
+
+class ManualOrderRequest(BaseModel):
+    order_id: str | None = None
+    product_name: str | None = None
+    product_category: str = "General"
+    payment_type: str = "Prepaid"
+    shipping_speed: str = "Standard"
+    amount: float = 0
+    quantity: int = 1
+    customer_type: str = "New"
+    phone_verified: str = "Yes"
+    email_verified: str = "Yes"
+    address_complete: str = "Yes"
+    distance_km: float = 0
+    previous_orders: int = 0
+    previous_returns: int = 0
+    order_hour: int = 12
+    coupon_used: str = "No"
+    account_age_days: int = 0
+    current_stock: float = 0
+    avg_daily_sales: float = 0
+    discount_amount: float = 0
 
 
 def normalized_email(email: EmailStr) -> str:
@@ -114,14 +141,25 @@ def build_analysis(file_path: str, limit: int = 20):
     risk = analyze_risk_file(file_path)
     profit = analyze_profit_file(file_path)
     stock = analyze_stock_file(file_path)
+    risk_orders = risk["orders"][:limit]
+    profit_products = profit["products"][:limit]
+    stock_items = stock["stocks"][:limit]
 
     return {
         "risk_summary": risk["summary"],
         "profit_summary": profit["summary"],
         "stock_summary": stock["summary"],
-        "risk_orders": risk["orders"][:limit],
-        "profit_products": profit["products"][:limit],
-        "stock_items": stock["stocks"][:limit],
+        "risk_orders": risk_orders,
+        "profit_products": profit_products,
+        "stock_items": stock_items,
+        "smart_suggestions": build_smart_suggestions(
+            risk["summary"],
+            profit["summary"],
+            stock["summary"],
+            risk_orders,
+            profit_products,
+            stock_items,
+        ),
     }
 
 
@@ -178,6 +216,41 @@ def demo_analysis(limit: int = Query(default=20, ge=1, le=100)):
 @app.get("/api/sample-orders", response_class=FileResponse)
 def sample_orders():
     return FileResponse(DATA_FILE, filename="sample_orders.csv", media_type="text/csv")
+
+
+@app.get("/api/model-metrics")
+def model_metrics():
+    if not MODEL_METRICS_FILE.exists():
+        return {"ml_available": False, "detail": "ML model metrics are not available yet."}
+    try:
+        return {"ml_available": True, **json.loads(MODEL_METRICS_FILE.read_text(encoding="utf-8"))}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/predict-order")
+def predict_order(request: ManualOrderRequest):
+    order = request.model_dump()
+    order["order_id"] = order.get("order_id") or "MANUAL-PREDICT"
+    order["product_name"] = order.get("product_name") or "Manual Order"
+    result = calculate_order_risk(order)
+    suggestions = build_smart_suggestions(
+        {
+            "total_orders": 1,
+            "high_risk": 1 if result["risk_level"] == "High" else 0,
+            "medium_risk": 1 if result["risk_level"] == "Medium" else 0,
+            "low_risk": 1 if result["risk_level"] == "Low" else 0,
+        },
+        {"profit_margin": 0, "low_margin_products": 0},
+        {"restock_needed": 0, "critical_stock": 0},
+        [result],
+        [],
+        [],
+    )
+    return {
+        "order": result,
+        "smart_suggestions": suggestions,
+    }
 
 
 @app.get("/api/history")
