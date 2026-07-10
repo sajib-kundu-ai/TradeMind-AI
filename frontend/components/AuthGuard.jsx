@@ -8,6 +8,7 @@ const tokenKey = "trademind_token";
 const protectedPaths = [
   "/dashboard",
   "/upload",
+  "/predict",
   "/returnguard",
   "/profit",
   "/stock",
