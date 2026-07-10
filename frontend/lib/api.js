@@ -106,3 +106,21 @@ export async function getLatestAnalysis(token) {
 
   return handleResponse(response);
 }
+
+export async function predictOrder(order) {
+  const response = await fetch(`${API_BASE_URL}/api/predict-order`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(order),
+  });
+
+  return handleResponse(response);
+}
+
+export async function getModelMetrics() {
+  const response = await fetch(`${API_BASE_URL}/api/model-metrics`, {
+    cache: "no-store",
+  });
+
+  return handleResponse(response);
+}
