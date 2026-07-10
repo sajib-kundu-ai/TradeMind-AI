@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, FileText, Loader2, UploadCloud } from "lucide-react";
+import { CheckCircle2, FileText, Loader2, Sparkles, UploadCloud } from "lucide-react";
 import { uploadAnalysis } from "@/lib/api";
 import RiskBadge from "./RiskBadge";
 import DonutChart from "./DonutChart";
@@ -115,12 +115,37 @@ export default function UploadBox() {
               ]}
             />
           </div>
+          {result.smart_suggestions && (
+            <div className="mt-6 rounded-3xl border border-blue-100 bg-blue-50/70 p-5">
+              <div className="flex items-center gap-3">
+                <span className="rounded-xl bg-white p-2 text-blue-600 shadow-sm"><Sparkles size={18} /></span>
+                <div>
+                  <h3 className="font-bold text-slate-950">AI Smart Action Plan</h3>
+                  <p className="mt-1 text-sm text-slate-600">Overall health: {result.smart_suggestions.overall_health}</p>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-2xl bg-white/80 p-4">
+                  <p className="text-sm font-semibold text-slate-950">Priority Actions</p>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                    {(result.smart_suggestions.priority_actions || []).map((item) => <li key={item}>- {item}</li>)}
+                  </ul>
+                </div>
+                <div className="rounded-2xl bg-white/80 p-4">
+                  <p className="text-sm font-semibold text-slate-950">Seller Next Steps</p>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                    {(result.smart_suggestions.seller_next_steps || []).map((item) => <li key={item}>- {item}</li>)}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[680px] text-left text-sm">
-              <thead className="border-b bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-3 py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Action</th></tr></thead>
+            <table className="w-full min-w-[820px] text-left text-sm">
+              <thead className="border-b bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-3 py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Rule</th><th>ML</th><th>Final</th><th>Action</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {result.risk_orders.map((order) => (
-                  <tr key={order.order_id} className="transition hover:bg-blue-50/40"><td className="px-3 py-4 font-semibold">{order.order_id}</td><td>{order.product_name}</td><td>৳{Number(order.amount).toLocaleString()}</td><td><RiskBadge level={order.risk_level} /></td><td>{order.suggested_action}</td></tr>
+                  <tr key={order.order_id} className="transition hover:bg-blue-50/40"><td className="px-3 py-4 font-semibold">{order.order_id}</td><td>{order.product_name}</td><td>৳{Number(order.amount).toLocaleString()}</td><td><RiskBadge level={order.risk_level} /></td><td>{Number(order.rule_score ?? (order.risk_score || 0)).toFixed(0)}</td><td>{order.ml_available ? `${Math.round(Number(order.ml_confidence || 0) * 100)}%` : "Rule"}</td><td>{Number(order.final_risk_score ?? (order.risk_score || 0)).toFixed(0)}</td><td>{order.suggested_action}</td></tr>
                 ))}
               </tbody>
             </table>
