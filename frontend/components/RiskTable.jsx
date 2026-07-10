@@ -28,7 +28,9 @@ function RiskDetail({ order, onClose }) {
             <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Product</p><p className="mt-1 font-semibold text-slate-950">{order.product_name}</p></div>
             <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Amount</p><p className="mt-1 font-semibold text-slate-950">{money(order.amount)}</p></div>
             <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Risk</p><div className="mt-1"><RiskBadge level={order.risk_level} /></div></div>
-            <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Score</p><p className="mt-1 font-semibold text-slate-950">{order.risk_score}/100</p></div>
+            <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Final score</p><p className="mt-1 font-semibold text-slate-950">{Number(order.final_risk_score ?? (order.risk_score || 0)).toFixed(0)}/100</p></div>
+            <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Rule score</p><p className="mt-1 font-semibold text-slate-950">{Number(order.rule_score ?? (order.risk_score || 0)).toFixed(0)}/100</p></div>
+            <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">ML confidence</p><p className="mt-1 font-semibold text-slate-950">{order.ml_available ? `${Math.round(Number(order.ml_confidence || 0) * 100)}%` : "Fallback"}</p></div>
           </div>
           <div className="mt-5 rounded-2xl border border-slate-200 p-4">
             <p className="text-sm font-semibold text-slate-950">Reason tags</p>
@@ -51,7 +53,7 @@ export default function RiskTable({ orders = [] }) {
     return orders
       .filter((order) => filter === "All" || order.risk_level === filter)
       .filter((order) => !needle || `${order.order_id} ${order.product_name}`.toLowerCase().includes(needle))
-      .sort((a, b) => Number(b.risk_score || 0) - Number(a.risk_score || 0));
+      .sort((a, b) => Number(b.final_risk_score ?? (b.risk_score || 0)) - Number(a.final_risk_score ?? (a.risk_score || 0)));
   }, [filter, orders, search]);
 
   return (
@@ -74,7 +76,7 @@ export default function RiskTable({ orders = [] }) {
       <div className="mt-6 overflow-x-auto">
         <table className="w-full min-w-[920px] text-left text-sm">
           <thead className="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-wider text-slate-500">
-            <tr><th className="py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Score</th><th>Reasons</th><th>Action</th></tr>
+            <tr><th className="py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Final</th><th>ML</th><th>Reasons</th><th>Action</th></tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filteredOrders.map((order) => (
@@ -83,7 +85,8 @@ export default function RiskTable({ orders = [] }) {
                 <td>{order.product_name}</td>
                 <td>{money(order.amount)}</td>
                 <td><RiskBadge level={order.risk_level} /></td>
-                <td className="font-semibold">{order.risk_score}/100</td>
+                <td className="font-semibold">{Number(order.final_risk_score ?? (order.risk_score || 0)).toFixed(0)}/100</td>
+                <td>{order.ml_available ? `${Math.round(Number(order.ml_confidence || 0) * 100)}%` : "Rule"}</td>
                 <td><div className="flex flex-wrap gap-2">{(order.reasons || []).slice(0, 3).map((reason) => <span key={reason} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">{reason}</span>)}</div></td>
                 <td className="font-medium text-slate-900">{order.suggested_action}</td>
               </tr>
