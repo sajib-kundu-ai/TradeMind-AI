@@ -1,19 +1,8 @@
 import Sidebar from "@/components/Sidebar";
 import DashboardCommandCenter from "@/components/DashboardCommandCenter";
-import { getDemoAnalysis } from "@/lib/api";
 import Link from "next/link";
 
-async function loadDashboardData() {
-  try {
-    return await getDemoAnalysis(100);
-  } catch {
-    return null;
-  }
-}
-
 export default async function DashboardPage() {
-  const data = await loadDashboardData();
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0">
       <Sidebar />
@@ -28,16 +17,24 @@ export default async function DashboardPage() {
               </p>
             </div>
 
-            <Link
-              href="/upload"
-              className="w-fit rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Analyze New Orders
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/upload"
+                className="w-fit rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Analyze New Orders
+              </Link>
+              <Link
+                href="/predict?mode=chat"
+                className="w-fit rounded-2xl border border-blue-100 bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+              >
+                Chat Predict
+              </Link>
+            </div>
           </div>
         </header>
 
-        <DashboardCommandCenter initialData={data} />
+        <DashboardCommandCenter />
       </section>
     </main>
   );
