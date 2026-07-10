@@ -52,8 +52,15 @@ _MODEL = None
 
 
 def _safe_float(value, default=0.0):
+    if value is None or pd.isna(value):
+        return default
+    if isinstance(value, str):
+        value = value.strip().replace(",", "")
+        if not value:
+            return default
     try:
-        return float(value)
+        number = float(value)
+        return default if pd.isna(number) else number
     except (TypeError, ValueError):
         return default
 
