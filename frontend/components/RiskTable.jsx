@@ -86,7 +86,7 @@ export default function RiskTable({ orders = [] }) {
                 <td>{money(order.amount)}</td>
                 <td><RiskBadge level={order.risk_level} /></td>
                 <td className="font-semibold">{Number(order.final_risk_score ?? (order.risk_score || 0)).toFixed(0)}/100</td>
-                <td>{order.ml_available ? `${Math.round(Number(order.ml_confidence || 0) * 100)}%` : "Rule"}</td>
+                <td>{order.ml_available ? `${Math.round(Number(order.ml_confidence || 0) * 100)}%` : "Fallback"}</td>
                 <td><div className="flex flex-wrap gap-2">{(order.reasons || []).slice(0, 3).map((reason) => <span key={reason} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">{reason}</span>)}</div></td>
                 <td className="font-medium text-slate-900">{order.suggested_action}</td>
               </tr>
