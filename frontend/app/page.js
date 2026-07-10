@@ -1,155 +1,201 @@
 import Link from "next/link";
+import {
+  BarChart3,
+  BrainCircuit,
+  PackageCheck,
+  ShieldCheck,
+  Upload,
+  WalletCards,
+} from "lucide-react";
+
+const features = [
+  {
+    name: "ReturnGuard AI",
+    description: "Flag risky orders before shipping and reduce failed delivery loss.",
+    icon: ShieldCheck,
+    accent: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  },
+  {
+    name: "ProfitDoctor",
+    description: "Track margin, fees, delivery cost, and profit leaks in one place.",
+    icon: WalletCards,
+    accent: "bg-blue-50 text-blue-700 ring-blue-100",
+  },
+  {
+    name: "StockMind",
+    description: "Spot low stock, slow movers, and items that need quick attention.",
+    icon: PackageCheck,
+    accent: "bg-violet-50 text-violet-700 ring-violet-100",
+  },
+  {
+    name: "AI Predict",
+    description: "Ask questions about orders and get practical next-step guidance.",
+    icon: BrainCircuit,
+    accent: "bg-amber-50 text-amber-700 ring-amber-100",
+  },
+];
+
+const metrics = [
+  ["Orders analyzed", "150+"],
+  ["High-risk orders", "18"],
+  ["Expected loss", "৳3.2k"],
+];
 
 export default function Home() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#070816] text-white">
-      <div className="pointer-events-none fixed inset-0">
-        <div className="absolute left-1/2 top-[-180px] h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-purple-600/30 blur-3xl" />
-        <div className="absolute right-[-120px] top-40 h-[420px] w-[420px] rounded-full bg-blue-600/20 blur-3xl" />
-        <div className="absolute bottom-[-120px] left-[-120px] h-[420px] w-[420px] rounded-full bg-cyan-500/10 blur-3xl" />
-      </div>
-
-      <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 font-bold shadow-lg shadow-blue-500/20">
+    <main className="min-h-screen overflow-hidden bg-[linear-gradient(135deg,#f8fafc_0%,#ffffff_46%,#eff6ff_100%)] text-slate-950">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5 sm:px-6 lg:px-8">
+        <Link href="/" className="flex min-w-0 items-center gap-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 font-bold text-white shadow-lg shadow-blue-200">
             T
-          </div>
-          <div>
-            <h1 className="font-bold">TradeMind AI</h1>
-            <p className="text-xs text-slate-400">by Lossless Labs</p>
-          </div>
-        </div>
-
-        <div className="hidden items-center gap-6 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm text-slate-300 backdrop-blur md:flex">
-          <span>ReturnGuard</span>
-          <span>ProfitDoctor</span>
-          <span>StockMind</span>
-          <span>Reports</span>
-        </div>
-
-        <Link
-          href="/login"
-          className="rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-        >
-          Login
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-base font-bold tracking-tight">
+              TradeMind AI
+            </span>
+            <span className="block truncate text-xs font-medium text-slate-500">
+              by Lossless Labs
+            </span>
+          </span>
         </Link>
+
+        <div className="flex items-center gap-2">
+          <Link
+            href="/login"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+          >
+            Login
+          </Link>
+        </div>
       </nav>
 
-      <section className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-6 pb-20 pt-16 lg:grid-cols-2">
+      <section className="mx-auto grid max-w-7xl items-center gap-8 px-5 pb-12 pt-6 sm:px-6 sm:pb-16 sm:pt-14 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:px-8 lg:pb-20">
         <div>
-          <div className="mb-5 inline-flex rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-200">
-            AI Business Copilot for Small Online Sellers
+          <div className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm">
+            <BarChart3 size={16} />
+            <span className="truncate">AI business copilot for online sellers</span>
           </div>
 
-          <h2 className="max-w-3xl text-5xl font-bold leading-tight tracking-tight md:text-7xl">
-            Turn seller data into{" "}
-            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              smart business decisions.
-            </span>
-          </h2>
+          <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+            TradeMind AI
+          </h1>
 
-          <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
-            Detect risky orders before shipping, reduce failed delivery loss,
-            analyze profit, monitor stock, and generate business reports using
-            explainable AI.
+          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+            Turn order, profit, stock, and customer signals into clear decisions
+            your team can act on before losses stack up.
           </p>
 
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <Link
               href="/dashboard"
-              className="rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-7 py-4 font-semibold text-white shadow-xl shadow-blue-600/25 transition hover:-translate-y-1 hover:from-blue-500 hover:to-violet-500"
+              className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-200 transition hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-300"
             >
               Open Dashboard
             </Link>
-
             <Link
               href="/upload"
-              className="rounded-2xl border border-white/15 bg-white/5 px-7 py-4 font-semibold text-white backdrop-blur transition hover:-translate-y-1 hover:bg-white/10"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-blue-600 px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-blue-100 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200"
             >
+              <Upload size={17} />
               Upload Orders
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200"
+            >
+              Login
             </Link>
           </div>
 
-          <div className="mt-12 grid max-w-xl grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="text-2xl font-bold">150+</p>
-              <p className="mt-1 text-xs text-slate-400">Orders analyzed</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="text-2xl font-bold">18</p>
-              <p className="mt-1 text-xs text-slate-400">High-risk orders</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-              <p className="text-2xl font-bold">৳3.2k</p>
-              <p className="mt-1 text-xs text-slate-400">Expected loss</p>
-            </div>
+          <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
+            {metrics.map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur"
+              >
+                <p className="text-2xl font-bold text-slate-950">{value}</p>
+                <p className="mt-1 text-sm text-slate-500">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="relative">
-          <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-r from-blue-500/20 to-purple-500/20 blur-2xl" />
-
-          <div className="relative rounded-[2rem] border border-white/10 bg-white/10 p-4 shadow-2xl backdrop-blur">
-            <div className="rounded-[1.5rem] border border-white/10 bg-[#0d1024] p-5">
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">ReturnGuard AI</h3>
-                  <p className="text-sm text-slate-400">Order risk analysis</p>
-                </div>
-                <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs font-semibold text-green-300">
-                  Live Demo
-                </span>
+        <div className="rounded-3xl border border-slate-200 bg-white p-3 shadow-2xl shadow-slate-200/70 sm:p-5">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 sm:p-5">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <p className="text-sm font-semibold text-slate-500">
+                  Demo workspace
+                </p>
+                <h2 className="mt-1 text-xl font-bold text-slate-950">
+                  Seller intelligence overview
+                </h2>
               </div>
+              <span className="w-fit rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                Ready
+              </span>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl bg-white/5 p-4">
-                  <p className="text-xs text-slate-400">Low Risk</p>
-                  <p className="mt-2 text-3xl font-bold text-green-300">87</p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {[
+                ["Low Risk", "87", "text-emerald-700"],
+                ["Medium Risk", "45", "text-amber-700"],
+                ["High Risk", "18", "text-red-700"],
+              ].map(([label, value, color]) => (
+                <div key={label} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-semibold text-slate-500">{label}</p>
+                  <p className={`mt-2 text-3xl font-bold ${color}`}>{value}</p>
                 </div>
-                <div className="rounded-2xl bg-white/5 p-4">
-                  <p className="text-xs text-slate-400">Medium Risk</p>
-                  <p className="mt-2 text-3xl font-bold text-yellow-300">45</p>
-                </div>
-                <div className="rounded-2xl bg-white/5 p-4">
-                  <p className="text-xs text-slate-400">High Risk</p>
-                  <p className="mt-2 text-3xl font-bold text-red-300">18</p>
-                </div>
-              </div>
+              ))}
+            </div>
 
-              <div className="mt-5 space-y-3">
-                {[
-                  ["ORD-1024", "Headphone", "High", "Call before shipping"],
-                  ["ORD-1031", "Cosmetics", "Medium", "Send confirmation"],
-                  ["ORD-1042", "T-Shirt", "Low", "Ship normally"],
-                ].map((row) => (
-                  <div
-                    key={row[0]}
-                    className="grid grid-cols-4 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm"
-                  >
-                    <span className="font-medium">{row[0]}</span>
-                    <span className="text-slate-300">{row[1]}</span>
-                    <span
-                      className={
-                        row[2] === "High"
-                          ? "text-red-300"
-                          : row[2] === "Medium"
-                          ? "text-yellow-300"
-                          : "text-green-300"
-                      }
-                    >
-                      {row[2]}
-                    </span>
-                    <span className="text-right text-slate-400">{row[3]}</span>
-                  </div>
-                ))}
-              </div>
+            <div className="mt-5 space-y-3">
+              {[
+                ["ORD-1024", "Headphone", "High", "Call first"],
+                ["ORD-1031", "Cosmetics", "Medium", "Confirm"],
+                ["ORD-1042", "T-Shirt", "Low", "Ship"],
+              ].map(([order, product, risk, action]) => (
+                <div
+                  key={order}
+                  className="grid grid-cols-2 gap-3 rounded-2xl border border-slate-100 bg-white p-4 text-sm shadow-sm sm:grid-cols-4 sm:items-center"
+                >
+                  <span className="font-semibold text-slate-950">{order}</span>
+                  <span className="min-w-0 truncate text-slate-600">{product}</span>
+                  <span className="font-semibold text-slate-700">{risk}</span>
+                  <span className="text-left font-medium text-slate-500 sm:text-right">
+                    {action}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="absolute -bottom-8 -left-8 hidden rounded-3xl border border-white/10 bg-white/10 p-5 backdrop-blur md:block">
-            <p className="text-sm text-slate-300">Business Health</p>
-            <p className="mt-2 text-3xl font-bold">74/100</p>
-          </div>
+      <section className="mx-auto max-w-7xl px-5 pb-16 sm:px-6 lg:px-8 lg:pb-20">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+
+            return (
+              <article
+                key={feature.name}
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <span
+                  className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ${feature.accent}`}
+                >
+                  <Icon size={21} />
+                </span>
+                <h3 className="text-base font-bold text-slate-950">
+                  {feature.name}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {feature.description}
+                </p>
+              </article>
+            );
+          })}
         </div>
       </section>
     </main>
