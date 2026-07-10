@@ -7,6 +7,7 @@ import ChartCard from "@/components/ChartCard";
 import DonutChart from "@/components/DonutChart";
 import { loadPreferredAnalysis, readStoredAnalysis } from "@/lib/analysisSource";
 import { TrendingUp, WalletCards } from "lucide-react";
+import Link from "next/link";
 
 const money = (value) => `৳${Number(value || 0).toLocaleString()}`;
 const compactMoney = (value) => {
@@ -21,7 +22,7 @@ export default function ProfitPage() {
     if (typeof window === "undefined") return null;
     return readStoredAnalysis();
   });
-  const [dataSource, setDataSource] = useState(() => (data ? "Uploaded analysis" : "Loading data"));
+  const [dataSource, setDataSource] = useState(() => (data ? "Uploaded analysis" : "No analysis yet"));
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -71,6 +72,18 @@ export default function ProfitPage() {
         </header>
         <div className="space-y-6 p-6">
           {error && <p className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">Could not load profit analysis: {error}</p>}
+          {!data && (
+            <div className="rounded-3xl border border-white/70 bg-white/85 p-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+              <TrendingUp className="mx-auto text-blue-600" size={32} />
+              <h2 className="mt-4 text-xl font-bold text-slate-950">No profit data yet</h2>
+              <p className="mt-2 text-sm text-slate-500">Upload orders to generate profit analysis.</p>
+              <Link href="/upload" className="mt-5 inline-flex rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                Upload Orders
+              </Link>
+            </div>
+          )}
+          {data && (
+            <>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <StatCard title="Total Sales" value={compactMoney(summary.total_sales)} subtitle={dataSource} tone="blue" />
             <StatCard title="Total Cost" value={compactMoney(summary.total_cost)} subtitle="Product cost" tone="purple" />
@@ -134,6 +147,8 @@ export default function ProfitPage() {
             <div className="flex items-center gap-3"><TrendingUp className="text-blue-600" size={24} /><div><h2 className="text-lg font-bold text-slate-950">Product-wise Profit Table</h2><p className="mt-1 text-sm text-slate-500">Low-margin products are highlighted for pricing or cost review.</p></div></div>
             <div className="mt-6 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b text-slate-500"><tr><th className="py-3">Product</th><th>Sales</th><th>Cost</th><th>Shipping</th><th>Profit</th><th>Margin</th><th>Status</th></tr></thead><tbody className="divide-y">{products.map((product) => <tr key={`${product.product_name}-${product.product_category}`} className={product.status === "Low Margin" ? "bg-red-50/60" : "transition hover:bg-blue-50/40"}><td className="py-4 font-semibold text-slate-900">{product.product_name}</td><td>{money(product.total_sales)}</td><td>{money(product.total_cost)}</td><td>{money(product.total_shipping)}</td><td className="font-semibold text-green-700">{money(product.net_profit)}</td><td>{product.profit_margin}%</td><td><span className={product.status === "Healthy" ? "rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700" : "rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700"}>{product.status}</span></td></tr>)}</tbody></table>{products.length === 0 && <p className="py-8 text-center text-sm text-slate-500">No product data found.</p>}</div>
           </div>
+            </>
+          )}
         </div>
       </section>
     </main>
