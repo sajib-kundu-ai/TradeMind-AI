@@ -1,230 +1,231 @@
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://127.0.0.1:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
-async function handleResponse(response) {
-  const data = await response.json().catch(() => ({}));
+const REQUEST_TIMEOUT_MS = 60000;
 
-  if (!response.ok) {
-    const error = new Error(data.detail || data.error || `API request failed (${response.status})`);
-    error.status = response.status;
-    throw error;
+function readToken(explicitToken) {
+  if (explicitToken) return explicitToken;
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem("trademind_token");
+  } catch {
+    return null;
+  }
+}
+
+function buildUrl(path, query) {
+  const url = new URL(path, API_BASE_URL);
+  Object.entries(query || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      url.searchParams.set(key, String(value));
+    }
+  });
+  return url.toString();
+}
+
+async function parseResponseBody(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { error: text };
+  }
+}
+
+function extractErrorMessage(data, status) {
+  if (Array.isArray(data?.detail)) {
+    return data.detail
+      .map((item) => item?.msg || item?.message || JSON.stringify(item))
+      .join("; ");
+  }
+  if (typeof data?.detail === "string") return data.detail;
+  if (typeof data?.error === "string") return data.error;
+  if (typeof data?.message === "string") return data.message;
+  return `API request failed (${status})`;
+}
+
+async function apiRequest(path, options = {}) {
+  const {
+    method = "GET",
+    body,
+    query,
+    token,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+    cache = "no-store",
+  } = options;
+  const headers = {};
+  const authToken = readToken(token);
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`;
   }
 
-  return data;
+  let requestBody = body;
+  if (body !== undefined && !(body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+    requestBody = JSON.stringify(body);
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(buildUrl(path, query), {
+      method,
+      headers,
+      body: requestBody,
+      cache,
+      signal: controller.signal,
+    });
+    const data = await parseResponseBody(response);
+
+    if (!response.ok) {
+      const error = new Error(extractErrorMessage(data, response.status));
+      error.status = response.status;
+      error.data = data;
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("Request timed out after 60 seconds. Try a smaller file or restart the backend.");
+    }
+    if (
+      error instanceof TypeError ||
+      error.message === "Failed to fetch" ||
+      error.message === "NetworkError when attempting to fetch resource."
+    ) {
+      throw new Error("Backend server is not running. Start FastAPI on port 8000.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export async function getDemoAnalysis(limit = 20) {
-  const response = await fetch(`${API_BASE_URL}/api/demo-analysis?limit=${limit}`, {
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
+  return apiRequest("/api/demo-analysis", { query: { limit } });
 }
 
-export async function uploadAnalysis(file, limit = 20) {
+export async function uploadAnalysis(file, limit = null) {
   const formData = new FormData();
   formData.append("file", file);
-
-  const token =
-    typeof window !== "undefined"
-      ? window.localStorage.getItem("trademind_token")
-      : null;
-  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-
-  const response = await fetch(
-    `${API_BASE_URL}/api/upload-analysis?limit=${limit}`,
-    {
-      method: "POST",
-      headers,
-      body: formData,
-    }
-  );
-
-  return handleResponse(response);
+  return apiRequest("/api/upload-analysis", {
+    method: "POST",
+    body: formData,
+    query: { limit },
+  });
 }
 
 export async function uploadStockAnalysis(file, token, options = {}) {
   const formData = new FormData();
   formData.append("file", file);
-
-  const merge = options.merge ?? true;
-  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), 60000);
-
-  let response;
-  try {
-    response = await fetch(`${API_BASE_URL}/api/stock/upload-analysis?merge=${merge}`, {
-      method: "POST",
-      headers,
-      body: formData,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (error.name === "AbortError") {
-      throw new Error("Stock upload timed out. Try a smaller CSV/XLSX file.");
-    }
-    throw error;
-  } finally {
-    window.clearTimeout(timeoutId);
-  }
-
-  return handleResponse(response);
+  return apiRequest("/api/stock/upload-analysis", {
+    method: "POST",
+    body: formData,
+    query: { merge: options.merge ?? true },
+    token,
+  });
 }
 
 export async function requestOtp(email) {
-  const response = await fetch(`${API_BASE_URL}/api/auth/request-otp`, {
+  return apiRequest("/api/auth/request-otp", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+    body: { email },
+    cache: undefined,
   });
-
-  return handleResponse(response);
 }
 
 export async function verifyOtp(email, otp) {
-  const response = await fetch(`${API_BASE_URL}/api/auth/verify-otp`, {
+  return apiRequest("/api/auth/verify-otp", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, otp }),
+    body: { email, otp },
+    cache: undefined,
   });
-
-  return handleResponse(response);
 }
 
 export async function getCurrentUser(token) {
-  const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
+  return apiRequest("/api/auth/me", { token });
 }
 
 export async function getHistory(token) {
-  const response = await fetch(`${API_BASE_URL}/api/history`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
+  return apiRequest("/api/history", { token });
 }
-
-export async function getLatestStockAnalysis(token) {
-  const response = await fetch(`${API_BASE_URL}/api/stock/latest`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
-}
-
-export async function getStockHistory(token) {
-  const response = await fetch(`${API_BASE_URL}/api/stock/history`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
-}
-
-export async function getStockHistoryItem(id, token) {
-  const response = await fetch(`${API_BASE_URL}/api/stock/history/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
-}
-
-export async function deleteStockHistoryItem(id, token) {
-  const response = await fetch(`${API_BASE_URL}/api/stock/history/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
-}
-
-export const deleteStockHistory = deleteStockHistoryItem;
 
 export async function getHistoryItem(token, id) {
-  const response = await fetch(`${API_BASE_URL}/api/history/${id}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
+  return apiRequest(`/api/history/${id}`, { token });
 }
 
-export async function deleteHistoryItem(token, id) {
-  const response = await fetch(`${API_BASE_URL}/api/history/${id}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
+export const getHistoryDetail = getHistoryItem;
 
-  return handleResponse(response);
+export async function deleteHistoryItem(token, id) {
+  return apiRequest(`/api/history/${id}`, {
+    method: "DELETE",
+    token,
+  });
 }
 
 export async function reanalyzeHistoryItem(id, token) {
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await fetch(`${API_BASE_URL}/api/history/${id}/reanalyze`, {
+  return apiRequest(`/api/history/${id}/reanalyze`, {
     method: "POST",
-    headers,
-    cache: "no-store",
+    token,
   });
-
-  return handleResponse(response);
 }
 
-export async function getLatestAnalysis(token) {
-  const response = await fetch(`${API_BASE_URL}/api/latest-analysis`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
+export const reanalyzeHistory = reanalyzeHistoryItem;
 
-  return handleResponse(response);
+export async function getLatestAnalysis(token) {
+  return apiRequest("/api/latest-analysis", { token });
 }
 
 export async function reanalyzeLatestAnalysis(token) {
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await fetch(`${API_BASE_URL}/api/latest-analysis/reanalyze`, {
+  return apiRequest("/api/latest-analysis/reanalyze", {
     method: "POST",
-    headers,
-    cache: "no-store",
+    token,
   });
-
-  return handleResponse(response);
 }
 
-export async function predictOrder(order) {
-  const response = await fetch(`${API_BASE_URL}/api/predict-order`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(order),
-  });
+export const reanalyzeLatest = reanalyzeLatestAnalysis;
 
-  return handleResponse(response);
+export async function predictOrder(order) {
+  return apiRequest("/api/predict-order", {
+    method: "POST",
+    body: order,
+  });
 }
 
 export async function predictOrderText(message) {
-  const response = await fetch(`${API_BASE_URL}/api/predict-order-text`, {
+  return apiRequest("/api/predict-order-text", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: { message },
   });
-
-  return handleResponse(response);
 }
 
 export async function getModelMetrics() {
-  const response = await fetch(`${API_BASE_URL}/api/model-metrics`, {
-    cache: "no-store",
-  });
-
-  return handleResponse(response);
+  return apiRequest("/api/model-metrics");
 }
+
+export async function getLatestStockAnalysis(token) {
+  return apiRequest("/api/stock/latest", { token });
+}
+
+export const getStockLatest = getLatestStockAnalysis;
+
+export async function getStockHistory(token) {
+  return apiRequest("/api/stock/history", { token });
+}
+
+export async function getStockHistoryItem(id, token) {
+  return apiRequest(`/api/stock/history/${id}`, { token });
+}
+
+export async function deleteStockHistoryItem(id, token) {
+  return apiRequest(`/api/stock/history/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export const deleteStockHistory = deleteStockHistoryItem;
