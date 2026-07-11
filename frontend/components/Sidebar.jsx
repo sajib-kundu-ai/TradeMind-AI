@@ -57,6 +57,11 @@ export default function Sidebar() {
   );
 
   function handleLogout() {
+    const email = (window.localStorage.getItem(userEmailKey) || "").trim().toLowerCase();
+    if (email) {
+      window.localStorage.removeItem(`trademind_latest_analysis_${email}`);
+    }
+    window.localStorage.removeItem("trademind_latest_analysis");
     window.localStorage.removeItem("trademind_token");
     window.localStorage.removeItem(userEmailKey);
     window.dispatchEvent(new Event("trademind:auth-changed"));
@@ -65,19 +70,19 @@ export default function Sidebar() {
 
   return (
     <>
-    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 overflow-hidden border-r border-white/10 bg-[#070816] px-4 py-5 text-white shadow-2xl lg:block">
-      <div className="pointer-events-none absolute -left-24 top-12 h-64 w-64 rounded-full bg-purple-600/15 blur-3xl" />
-      <div className="mb-10 flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 font-bold shadow-lg shadow-blue-500/20">
+    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 overflow-hidden border-r border-white/10 bg-[#060914]/95 px-4 py-5 text-white shadow-2xl lg:block">
+      <div className="pointer-events-none absolute -left-24 top-12 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
+      <div className="mb-9 flex items-center gap-3 border-b border-white/10 pb-5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 via-blue-500 to-violet-600 font-bold shadow-lg shadow-cyan-500/20">
           T
         </div>
         <div>
-          <h1 className="text-lg font-bold tracking-tight">TradeMind AI</h1>
+          <h1 className="text-base font-semibold tracking-tight">TradeMind AI</h1>
           <p className="text-xs text-slate-400">by Lossless Labs</p>
         </div>
       </div>
 
-      <nav className="relative space-y-1.5">
+      <nav className="relative space-y-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -88,24 +93,24 @@ export default function Sidebar() {
               href={item.href}
               className={`group flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-sm font-medium transition ${
                 active
-                  ? "border-blue-400/20 bg-gradient-to-r from-blue-500/20 to-purple-500/15 text-white shadow-lg shadow-blue-950/20"
-                  : "border-transparent text-slate-400 hover:border-white/5 hover:bg-white/[0.06] hover:text-white"
+                  ? "border-cyan-300/20 bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-violet-500/10 text-white shadow-lg shadow-blue-950/20"
+                  : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.055] hover:text-white"
               }`}
             >
-              <span className={`rounded-xl p-1.5 ${active ? "bg-blue-500/20 text-blue-300" : "bg-white/5 group-hover:text-blue-300"}`}><Icon size={17} /></span>
+              <span className={`rounded-lg p-1.5 ${active ? "bg-cyan-400/10 text-cyan-200" : "bg-white/[0.045] group-hover:text-cyan-200"}`}><Icon size={17} /></span>
               {item.name}
             </Link>
           );
         })}
       </nav>
 
-      <div className="absolute bottom-5 left-4 right-4 space-y-3 rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.08] to-white/[0.03] p-4 backdrop-blur">
-        <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-black/15 p-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
+      <div className="absolute bottom-5 left-4 right-4 space-y-3 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.025] p-4 backdrop-blur">
+        <div className="flex items-start gap-3 rounded-xl border border-white/10 bg-black/15 p-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-400/10 text-cyan-200">
             <User size={17} />
           </span>
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">User</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">User</p>
             <p className="truncate text-sm font-medium text-slate-200" title={userEmail}>
               {userEmail}
             </p>
@@ -114,7 +119,7 @@ export default function Sidebar() {
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-200"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:border-rose-400/20 hover:bg-rose-500/10 hover:text-rose-200"
         >
           <LogOut size={17} />
           Logout
