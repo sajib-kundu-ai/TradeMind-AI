@@ -52,7 +52,7 @@ export default function Home() {
           </span>
         </Link>
 
-        <div className="hidden items-center gap-1 rounded-full border border-cyan-300/10 bg-white/[0.06] p-1 text-sm text-slate-300 shadow-lg shadow-blue-950/20 backdrop-blur md:flex">
+        <div className="hidden items-center gap-1 rounded-full border border-cyan-300/10 bg-white/[0.055] p-1 text-sm text-slate-300 shadow-lg shadow-blue-950/20 backdrop-blur-xl md:flex">
           {navItems.map((item) => (
             <span
               key={item}
@@ -65,14 +65,14 @@ export default function Home() {
 
         <Link
           href="/dashboard"
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/20 bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-950/20 backdrop-blur transition hover:border-cyan-300/40 hover:bg-white/[0.14] sm:px-5"
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-cyan-300/20 bg-white/[0.08] px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-950/20 backdrop-blur-xl transition hover:border-cyan-300/40 hover:bg-white/[0.14] sm:px-5"
         >
           Launch App
           <ArrowUpRight size={16} />
         </Link>
       </nav>
 
-      <section className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-5 pb-16 pt-8 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10 lg:px-8">
+      <section className="relative z-10 mx-auto grid max-w-7xl items-center gap-12 px-5 pb-16 pt-8 sm:px-6 sm:pb-20 sm:pt-14 lg:grid-cols-[1.02fr_0.98fr] lg:gap-12 lg:px-8">
         <div>
           <div className="mb-5 inline-flex max-w-full rounded-full border border-cyan-300/20 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 shadow-lg shadow-cyan-950/20 backdrop-blur">
             <span className="truncate">
@@ -80,7 +80,7 @@ export default function Home() {
             </span>
           </div>
 
-          <h1 className="max-w-3xl text-5xl font-bold leading-[1.02] tracking-tight text-white sm:text-6xl lg:text-7xl">
+          <h1 className="max-w-3xl text-5xl font-semibold leading-[1.02] tracking-tight text-white sm:text-6xl lg:text-7xl">
             Turn seller data
             <br />
             into{" "}
@@ -109,7 +109,7 @@ export default function Home() {
             </Link>
             <Link
               href="/upload"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-white/[0.07] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-950/20 backdrop-blur transition hover:-translate-y-0.5 hover:border-cyan-300/40 hover:bg-white/[0.12] focus:outline-none focus:ring-4 focus:ring-cyan-300/20"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-cyan-300/20 bg-white/[0.07] px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-950/20 backdrop-blur transition hover:-translate-y-0.5 hover:border-cyan-300/40 hover:bg-white/15 focus:outline-none focus:ring-4 focus:ring-cyan-300/20"
             >
               <Upload size={17} />
               Upload Orders
@@ -130,10 +130,10 @@ export default function Home() {
         </div>
 
         <div className="relative mx-auto w-full max-w-2xl lg:max-w-none">
-          <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-violet-500/25 blur-2xl" />
+          <div className="absolute -inset-4 rounded-2xl bg-gradient-to-r from-cyan-500/20 via-blue-500/20 to-violet-500/25 blur-2xl" />
 
-          <div className="relative rounded-[2rem] border border-cyan-300/15 bg-white/[0.08] p-3 shadow-2xl shadow-blue-950/50 backdrop-blur-xl sm:p-5">
-            <div className="rounded-[1.5rem] border border-white/10 bg-[#090d1f]/90 p-4 sm:p-5">
+          <div className="relative rounded-2xl border border-cyan-300/15 bg-white/[0.075] p-3 shadow-2xl shadow-blue-950/50 backdrop-blur-xl sm:p-5">
+            <div className="rounded-2xl border border-white/10 bg-[#090d1f]/90 p-4 sm:p-5">
               <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                 <div>
                   <h2 className="text-xl font-bold text-white">
@@ -152,7 +152,7 @@ export default function Home() {
                 {riskCards.map(([label, value, color, glow]) => (
                   <div
                     key={label}
-                    className={`rounded-2xl border border-white/10 bg-gradient-to-br ${glow} to-white/[0.04] p-4 shadow-lg shadow-blue-950/20`}
+                    className={`rounded-xl border border-white/10 bg-gradient-to-br ${glow} to-white/[0.04] p-4 shadow-lg shadow-blue-950/20`}
                   >
                     <p className="text-xs font-semibold text-slate-400">
                       {label}
@@ -168,7 +168,7 @@ export default function Home() {
                 {orders.map(([order, product, risk, action]) => (
                   <div
                     key={order}
-                    className="grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-sm shadow-sm sm:grid-cols-4 sm:items-center"
+                    className="grid grid-cols-2 gap-3 rounded-xl border border-white/10 bg-white/[0.045] p-4 text-sm shadow-sm sm:grid-cols-4 sm:items-center"
                   >
                     <span className="font-semibold text-white">{order}</span>
                     <span className="min-w-0 truncate text-slate-300">
@@ -186,7 +186,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="absolute -bottom-7 left-4 rounded-3xl border border-cyan-300/15 bg-slate-950/70 p-4 shadow-2xl shadow-cyan-950/30 backdrop-blur sm:-left-6 sm:p-5">
+          <div className="absolute -bottom-7 left-4 rounded-2xl border border-cyan-300/15 bg-slate-950/70 p-4 shadow-2xl shadow-cyan-950/30 backdrop-blur sm:-left-6 sm:p-5">
             <p className="text-sm font-medium text-slate-300">
               Business Health
             </p>
