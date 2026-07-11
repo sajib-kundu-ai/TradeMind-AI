@@ -1,6 +1,5 @@
 from pathlib import Path
 import json
-import shutil
 from uuid import uuid4
 
 import httpx
@@ -15,10 +14,15 @@ from pydantic import BaseModel, EmailStr, Field
 try:
     from .database import get_db, init_db
     from . import models as models
-    from .services.risk_engine import analyze_risk_file, calculate_order_risk
-    from .services.profit_engine import analyze_profit_file
+    from .services.risk_engine import (
+        analyze_risk_dataframe,
+        analyze_risk_file,
+        calculate_order_risk,
+    )
+    from .services.profit_engine import analyze_profit_dataframe, analyze_profit_file
     from .services.stock_engine import (
         analyze_stock_file,
+        analyze_stock_dataframe,
         analyze_stock_records,
         merge_stock_records,
         read_stock_file_records,
@@ -53,10 +57,15 @@ try:
 except ImportError:
     from database import get_db, init_db
     import models as models
-    from services.risk_engine import analyze_risk_file, calculate_order_risk
-    from services.profit_engine import analyze_profit_file
+    from services.risk_engine import (
+        analyze_risk_dataframe,
+        analyze_risk_file,
+        calculate_order_risk,
+    )
+    from services.profit_engine import analyze_profit_dataframe, analyze_profit_file
     from services.stock_engine import (
         analyze_stock_file,
+        analyze_stock_dataframe,
         analyze_stock_records,
         merge_stock_records,
         read_stock_file_records,
@@ -93,7 +102,12 @@ app = FastAPI(title="TradeMind AI API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -104,6 +118,7 @@ DATA_FILE = BASE_DIR / "data" / "sample_orders.csv"
 MODEL_METRICS_FILE = BASE_DIR / "ml" / "model_metrics.json"
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 bearer_scheme = HTTPBearer(auto_error=False)
 
 init_db()
@@ -134,7 +149,7 @@ class ManualOrderRequest(BaseModel):
     previous_returns: int = 0
     order_hour: int = 12
     coupon_used: str = "No"
-    account_age_days: int = 0
+    account_age_days: int = 30
     current_stock: float = 0
     avg_daily_sales: float = 0
     discount_amount: float = 0
@@ -172,13 +187,50 @@ def optional_user_email(
         return None
 
 
-def build_analysis(file_path: str, limit: int = 20):
-    risk = analyze_risk_file(file_path)
-    profit = analyze_profit_file(file_path)
-    stock = analyze_stock_file(file_path)
-    risk_orders = risk["orders"][:limit]
-    profit_products = profit["products"][:limit]
-    stock_items = stock["stocks"][:limit]
+def read_upload_dataframe(file_path: str):
+    if file_path.endswith(".xlsx"):
+        return pd.read_excel(file_path)
+    return pd.read_csv(file_path)
+
+
+def save_upload_file(file: UploadFile, saved_path: Path):
+    total_bytes = 0
+    with saved_path.open("wb") as buffer:
+        while chunk := file.file.read(1024 * 1024):
+            total_bytes += len(chunk)
+            if total_bytes > MAX_UPLOAD_BYTES:
+                raise HTTPException(
+                    status_code=413,
+                    detail="Uploaded file is too large. Upload a CSV/XLSX file under 10 MB",
+                )
+            buffer.write(chunk)
+
+
+def build_analysis(file_path: str, limit: int | None = None):
+    df = read_upload_dataframe(file_path)
+    risk = analyze_risk_dataframe(df)
+    profit = analyze_profit_dataframe(df)
+    try:
+        stock = analyze_stock_dataframe(df)
+    except ValueError:
+        empty_stock_summary = {
+            "total_products": 0,
+            "critical_stock": 0,
+            "warning_stock": 0,
+            "healthy_stock": 0,
+            "no_sales_data": 0,
+            "restock_needed": 0,
+        }
+        stock = {
+            "summary": empty_stock_summary,
+            "stock_summary": empty_stock_summary,
+            "stocks": [],
+            "stock_items": [],
+            "stock_suggestions": [],
+        }
+    risk_orders = risk["orders"][:limit] if limit else risk["orders"]
+    profit_products = profit["products"][:limit] if limit else profit["products"]
+    stock_items = stock["stocks"][:limit] if limit else stock["stocks"]
 
     return {
         "risk_summary": risk["summary"],
@@ -300,6 +352,14 @@ def predict_order(request: ManualOrderRequest):
     )
     return {
         "order": result,
+        "parsed_order": order,
+        "risk_score": result["risk_score"],
+        "final_risk_score": result["final_risk_score"],
+        "risk_level": result["risk_level"],
+        "reasons": result["reasons"],
+        "suggested_action": result["suggested_action"],
+        "ml_available": result["ml_available"],
+        "ml_confidence": result["ml_confidence"],
         "smart_suggestions": suggestions,
     }
 
@@ -312,7 +372,10 @@ def predict_order_text(request: TextPredictRequest):
 
     parsed = parse_order_text(message)
     parsed_order = parsed["parsed_order"]
-    result = calculate_order_risk(parsed_order)
+    try:
+        result = calculate_order_risk(parsed_order)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Could not score text order: {exc}") from exc
     suggestions = build_smart_suggestions(
         {
             "total_orders": 1,
@@ -335,6 +398,13 @@ def predict_order_text(request: TextPredictRequest):
         "parser_confidence": parsed["parser_confidence"],
         "parser_notes": parsed["parser_notes"],
         "order": result,
+        "risk_score": result["risk_score"],
+        "final_risk_score": result["final_risk_score"],
+        "risk_level": result["risk_level"],
+        "reasons": result["reasons"],
+        "suggested_action": result["suggested_action"],
+        "ml_available": result["ml_available"],
+        "ml_confidence": result["ml_confidence"],
         "smart_suggestions": suggestions,
     }
 
@@ -426,7 +496,7 @@ def latest_analysis_reanalyze(
 @app.post("/api/upload-analysis")
 async def upload_analysis(
     file: UploadFile = File(...),
-    limit: int = Query(default=20, ge=1, le=100),
+    limit: int | None = Query(default=None, ge=1),
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ):
@@ -442,12 +512,24 @@ async def upload_analysis(
     saved_path = UPLOAD_DIR / f"{uuid4().hex}{file_extension}"
 
     try:
-        with saved_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
+        save_upload_file(file, saved_path)
         result = build_analysis(str(saved_path), limit)
+    except HTTPException:
+        raise
+    except pd.errors.EmptyDataError as exc:
+        raise HTTPException(status_code=400, detail="Uploaded order file is empty") from exc
+    except (pd.errors.ParserError, UnicodeDecodeError) as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Could not read order file. Please upload a valid CSV or XLSX file",
+        ) from exc
     except (OSError, ValueError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not analyze order file: {exc}",
+        ) from exc
     finally:
         await file.close()
         saved_path.unlink(missing_ok=True)
@@ -490,10 +572,10 @@ async def upload_stock_analysis(
     saved_path = UPLOAD_DIR / f"{uuid4().hex}{file_extension}"
 
     try:
-        with saved_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-
+        save_upload_file(file, saved_path)
         new_records = read_stock_file_records(str(saved_path))
+    except HTTPException:
+        raise
     except pd.errors.EmptyDataError as exc:
         raise HTTPException(status_code=400, detail="Uploaded stock file is empty") from exc
     except (pd.errors.ParserError, UnicodeDecodeError) as exc:
