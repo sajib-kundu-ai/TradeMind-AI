@@ -31,6 +31,31 @@ def _safe_int(value, default=0):
         return default
 
 
+def _safe_text(value, default=""):
+    if value is None or pd.isna(value):
+        return default
+    text = str(value).strip()
+    return text or default
+
+
+def _normalize_columns(df):
+    df = df.copy()
+    normalized_columns = []
+    for column in df.columns:
+        normalized = (
+            str(column)
+            .strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+        while "__" in normalized:
+            normalized = normalized.replace("__", "_")
+        normalized_columns.append(normalized)
+    df.columns = normalized_columns
+    return df
+
+
 def _risk_level(score):
     if score >= 75:
         return "High"
@@ -121,16 +146,68 @@ def calculate_order_risk(order, ml_result=None):
 
 
 def analyze_risk_dataframe(df):
-    df = df.copy()
-    df.columns = [str(column).strip() for column in df.columns]
+    df = _normalize_columns(df)
     required_columns = [
-        "order_id", "product_name", "product_category", "payment_type", "amount",
+        "order_id", "product_name", "payment_type", "amount",
         "customer_type", "phone_verified", "address_complete", "distance_km",
         "previous_returns", "order_hour",
     ]
     missing = [column for column in required_columns if column not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns: {', '.join(missing)}")
+
+    defaults = {
+        "product_category": "General",
+        "quantity": 1,
+        "email_verified": "Unknown",
+        "previous_orders": 0,
+        "coupon_used": "No",
+        "account_age_days": 30,
+        "current_stock": 0,
+        "avg_daily_sales": 0,
+        "shipping_speed": "Standard",
+        "discount_amount": 0,
+        "customer_id": "UNKNOWN-CUSTOMER",
+        "city": "Unknown",
+        "order_date": None,
+        "status": None,
+        "is_risky": None,
+    }
+    for column, default in defaults.items():
+        if column not in df.columns:
+            df[column] = default
+
+    text_defaults = {
+        "order_id": "UNKNOWN",
+        "product_name": "Unknown Product",
+        "product_category": "General",
+        "payment_type": "Prepaid",
+        "customer_type": "New",
+        "phone_verified": "Yes",
+        "email_verified": "Unknown",
+        "address_complete": "Yes",
+        "coupon_used": "No",
+        "shipping_speed": "Standard",
+    }
+    for column, default in text_defaults.items():
+        df[column] = df[column].apply(lambda value, fallback=default: _safe_text(value, fallback))
+
+    numeric_defaults = {
+        "amount": 0,
+        "distance_km": 0,
+        "previous_returns": 0,
+        "order_hour": 12,
+        "quantity": 1,
+        "previous_orders": 0,
+        "account_age_days": 30,
+        "current_stock": 0,
+        "avg_daily_sales": 0,
+        "discount_amount": 0,
+        "cost_price": 0,
+        "shipping_cost": 0,
+    }
+    for column, default in numeric_defaults.items():
+        df[column] = df[column].apply(lambda value, fallback=default: _safe_float(value, fallback))
 
     records = df.to_dict(orient="records")
     ml_results = predict_ml_risks(records)
