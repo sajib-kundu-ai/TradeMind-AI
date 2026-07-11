@@ -1,21 +1,63 @@
 import pandas as pd
 
 
-def _safe_float(value):
+def _safe_float(value, default=0.0):
+    if value is None or pd.isna(value):
+        return default
+    if isinstance(value, str):
+        value = value.strip().replace(",", "")
+        if not value:
+            return default
     try:
-        return float(value)
+        number = float(value)
+        return default if pd.isna(number) else number
     except (TypeError, ValueError):
-        return 0.0
+        return default
+
+
+def _safe_text(value, default=""):
+    if value is None or pd.isna(value):
+        return default
+    text = str(value).strip()
+    return text or default
+
+
+def _normalize_columns(df):
+    df = df.copy()
+    normalized_columns = []
+    for column in df.columns:
+        normalized = (
+            str(column)
+            .strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+        while "__" in normalized:
+            normalized = normalized.replace("__", "_")
+        normalized_columns.append(normalized)
+    df.columns = normalized_columns
+    return df
 
 
 def analyze_profit_dataframe(df):
-    required_columns = ["product_name", "product_category", "amount", "cost_price", "shipping_cost"]
+    df = _normalize_columns(df)
 
-    for column in required_columns:
-        if column not in df.columns:
-            raise ValueError(f"Missing required column: {column}")
+    required_columns = ["product_name", "amount", "cost_price", "shipping_cost"]
 
-    df = df.copy()
+    missing = [column for column in required_columns if column not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required profit columns: {', '.join(missing)}")
+
+    if "product_category" not in df.columns:
+        df["product_category"] = "General"
+
+    df["product_name"] = df["product_name"].apply(
+        lambda value: _safe_text(value, "Unknown Product")
+    )
+    df["product_category"] = df["product_category"].apply(
+        lambda value: _safe_text(value, "General")
+    )
 
     df["amount"] = df["amount"].apply(_safe_float)
     df["cost_price"] = df["cost_price"].apply(_safe_float)
@@ -30,12 +72,12 @@ def analyze_profit_dataframe(df):
         axis=1,
     )
 
-    total_sales = round(df["amount"].sum(), 2)
-    total_cost = round(df["cost_price"].sum(), 2)
-    total_shipping = round(df["shipping_cost"].sum(), 2)
-    net_profit = round(df["net_profit"].sum(), 2)
+    total_sales = float(round(df["amount"].sum(), 2))
+    total_cost = float(round(df["cost_price"].sum(), 2))
+    total_shipping = float(round(df["shipping_cost"].sum(), 2))
+    net_profit = float(round(df["net_profit"].sum(), 2))
 
-    profit_margin = round((net_profit / total_sales) * 100, 2) if total_sales > 0 else 0
+    profit_margin = float(round((net_profit / total_sales) * 100, 2)) if total_sales > 0 else 0.0
 
     product_summary = (
         df.groupby(["product_name", "product_category"], as_index=False)
@@ -77,7 +119,6 @@ def analyze_profit_dataframe(df):
         "products": product_summary.to_dict(orient="records"),
         "low_margin_alerts": low_margin_products,
     }
-
 
 def analyze_profit_file(file_path):
     if file_path.endswith(".xlsx"):
