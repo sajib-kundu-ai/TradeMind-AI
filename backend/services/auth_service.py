@@ -1,11 +1,15 @@
 import os
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
+from dotenv import load_dotenv
 from jose import JWTError, jwt
 
 
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_DAYS = 7
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
 class AuthConfigurationError(RuntimeError):
