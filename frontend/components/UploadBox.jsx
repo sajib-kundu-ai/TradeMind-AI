@@ -8,6 +8,8 @@ import { saveStoredAnalysis } from "@/lib/analysisSource";
 import RiskBadge from "./RiskBadge";
 import DonutChart from "./DonutChart";
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 const sampleHeaders = [
   "order_id",
   "product_name",
@@ -48,34 +50,71 @@ function escapeCsv(value) {
   return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
+function validateUploadFile(selected) {
+  if (!selected) {
+    return "Choose a CSV or XLSX file first.";
+  }
+
+  const name = selected.name.toLowerCase();
+  if (!name.endsWith(".csv") && !name.endsWith(".xlsx")) {
+    return "Only CSV and Excel .xlsx files are supported.";
+  }
+
+  if (selected.size === 0) {
+    return "Selected file is empty. Choose a CSV or XLSX file with order data.";
+  }
+
+  if (selected.size > MAX_UPLOAD_BYTES) {
+    return "Selected file is too large. Upload a CSV/XLSX file under 10 MB.";
+  }
+
+  return "";
+}
+
 export default function UploadBox() {
-  const [file, setFile] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   function handleFileChange(event) {
     const selected = event.target.files?.[0] || null;
-    setFile(selected);
-    setResult(null);
+    const validationError = validateUploadFile(selected);
+
+    if (validationError && selected) {
+      setSelectedFile(null);
+      setError(validationError);
+      event.target.value = "";
+      return;
+    }
+
     setError("");
+    setSelectedFile(selected);
+    if (selected) {
+      setResult(null);
+    }
   }
 
   async function handleUpload() {
-    if (!file) {
-      setError("Choose a CSV or XLSX file first.");
+    if (loading) {
+      return;
+    }
+
+    const validationError = validateUploadFile(selectedFile);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setLoading(true);
     setError("");
     try {
-      const analysis = await uploadAnalysis(file, 300);
+      const analysis = await uploadAnalysis(selectedFile, 300);
       setResult(analysis);
       saveStoredAnalysis(analysis);
     } catch (uploadError) {
       setResult(null);
-      setError(uploadError.message);
+      setError(uploadError.message || "Order upload failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -104,51 +143,59 @@ export default function UploadBox() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-3xl border border-white/70 bg-white/80 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:p-8">
+      <div className="rounded-2xl border border-white/10 tm-glass p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold text-slate-950">Upload Order Data</h2>
-            <p className="mt-2 text-sm text-slate-500">
+            <h2 className="text-xl font-bold text-white">Upload Order Data</h2>
+            <p className="mt-2 text-sm text-slate-400">
               Upload CSV/XLSX order data to analyze risk, profit, and stock insights.
             </p>
           </div>
           <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 p-3 text-white shadow-lg shadow-blue-500/20"><UploadCloud size={24} /></div>
         </div>
 
-        <label className="group mt-8 flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-blue-200 bg-gradient-to-br from-blue-50/80 to-violet-50/70 px-6 py-14 text-center transition duration-300 hover:-translate-y-0.5 hover:border-blue-400 hover:shadow-xl hover:shadow-blue-100/70">
-          <span className="rounded-2xl bg-white p-4 text-blue-600 shadow-md transition group-hover:scale-105"><UploadCloud size={32} /></span>
-          <p className="mt-4 text-sm font-semibold text-slate-700">Click to upload CSV or Excel file</p>
-          <p className="mt-1 text-xs text-slate-500">Maximum rows returned: 300</p>
-          <input type="file" accept=".csv,.xlsx" className="hidden" onChange={handleFileChange} />
-        </label>
+        <div className="mt-8 rounded-2xl border border-cyan-300/20 bg-gradient-to-br from-cyan-500/10 via-blue-500/10 to-violet-500/10 p-5">
+          <label htmlFor="orders-file" className="mb-3 flex items-center gap-3 text-sm font-semibold text-slate-200">
+            <span className="rounded-xl bg-slate-900/70 p-2 text-cyan-300 shadow-md"><UploadCloud size={20} /></span>
+            Upload CSV or Excel file
+          </label>
+          <input
+            id="orders-file"
+            type="file"
+            accept=".csv,.xlsx"
+            onChange={handleFileChange}
+            className="block w-full cursor-pointer rounded-xl border border-white/10 bg-slate-950/70 text-sm text-slate-200 file:mr-4 file:cursor-pointer file:border-0 file:bg-cyan-400/15 file:px-4 file:py-3 file:text-sm file:font-semibold file:text-cyan-100 hover:file:bg-cyan-400/25 focus:outline-none focus:ring-4 focus:ring-cyan-300/20"
+          />
+          <p className="mt-2 text-xs text-slate-400">All uploaded rows will be analyzed after you click Analyze Orders.</p>
+        </div>
 
-        {file && (
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-green-200 bg-green-50 p-4">
+        {selectedFile && (
+          <div className="mt-5 flex items-center justify-between gap-4 rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4">
             <div className="flex min-w-0 items-center gap-3">
-              <FileText className="shrink-0 text-green-600" size={20} />
+              <FileText className="shrink-0 text-emerald-300" size={20} />
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-green-800" title={file.name}>{file.name}</p>
-                <p className="text-xs text-green-700">{fileSize(file.size)}</p>
+                <p className="truncate text-sm font-medium text-emerald-100" title={selectedFile.name}>{selectedFile.name}</p>
+                <p className="text-xs text-emerald-200">{fileSize(selectedFile.size)}</p>
               </div>
             </div>
-            <CheckCircle2 className="text-green-600" size={20} />
+            <CheckCircle2 className="text-emerald-300" size={20} />
           </div>
         )}
 
-        {error && <p role="alert" className="mt-5 rounded-2xl bg-red-50 p-4 text-sm font-medium text-red-700">{error}</p>}
+        {error && <p role="alert" className="mt-5 rounded-2xl bg-rose-500/10 p-4 text-sm font-medium text-rose-200">{error}</p>}
 
-        {!file && (
+        {!selectedFile && (
           <div className="mt-6 grid gap-4">
-            <div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white/80 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 tm-glass p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-bold text-slate-950">No file ready?</p>
-                <p className="mt-1 text-sm text-slate-500">Download a complete sample CSV or test one order manually.</p>
+                <p className="text-sm font-bold text-white">No file ready?</p>
+                <p className="mt-1 text-sm text-slate-400">Download a complete sample CSV or test one order manually.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={downloadSampleCsv} className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
+                <button type="button" onClick={downloadSampleCsv} className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
                   <Download size={16} /> Download Sample CSV
                 </button>
-                <Link href="/predict?mode=chat" className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700 transition hover:bg-blue-100">
+                <Link href="/predict?mode=chat" className="inline-flex items-center gap-2 rounded-2xl border border-cyan-300/20 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-200 transition hover:bg-blue-500/20">
                   <BrainCircuit size={16} /> Try AI chat prediction
                 </Link>
               </div>
@@ -161,10 +208,10 @@ export default function UploadBox() {
                 [TrendingUp, "ProfitDoctor", "Finds low margin and cost issues."],
                 [Warehouse, "StockMind", "Finds restock urgency and days left."],
               ].map(([Icon, title, description]) => (
-                <div key={title} className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <Icon className="text-blue-600" size={20} />
-                  <p className="mt-3 text-sm font-bold text-slate-950">{title}</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+                <div key={title} className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                  <Icon className="text-cyan-300" size={20} />
+                  <p className="mt-3 text-sm font-bold text-white">{title}</p>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">{description}</p>
                 </div>
               ))}
             </div>
@@ -173,27 +220,27 @@ export default function UploadBox() {
 
         <button type="button" onClick={handleUpload} disabled={loading} className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-4 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:from-blue-500 hover:to-violet-500 disabled:cursor-wait disabled:opacity-60">
           {loading && <Loader2 className="animate-spin" size={17} />}
-          {loading ? "Analyzing risk, profit, and stock signals..." : "Analyze Orders"}
+          {loading ? "Analyzing orders..." : "Analyze Orders"}
         </button>
       </div>
 
       {result && (
-        <div className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-          <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-50 p-2 text-emerald-600"><CheckCircle2 size={20} /></span><h2 className="text-lg font-bold text-slate-950">Analysis complete</h2></div>
-          <p className="mt-1 text-sm text-slate-500">{result.uploaded_file || file?.name} analyzed successfully.</p>
-          <span className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${mlActive ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+        <div className="rounded-2xl border border-white/10 tm-glass p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+          <div className="flex items-center gap-3"><span className="rounded-xl bg-emerald-500/10 p-2 text-emerald-300"><CheckCircle2 size={20} /></span><h2 className="text-lg font-bold text-white">Analysis complete</h2></div>
+          <p className="mt-1 text-sm text-slate-400">{result.uploaded_file || selectedFile?.name} analyzed successfully.</p>
+          <span className={`mt-4 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${mlActive ? "bg-emerald-500/10 text-emerald-200" : "bg-amber-500/10 text-amber-200"}`}>
             {mlActive ? "ML confidence active" : "Rule fallback"}
           </span>
-          <p className={`mt-4 rounded-2xl border p-4 text-sm font-medium ${result.saved ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+          <p className={`mt-4 rounded-2xl border p-4 text-sm font-medium ${result.saved ? "border-emerald-200 bg-emerald-500/10 text-emerald-200" : "border-amber-300/20 bg-amber-500/10 text-amber-100"}`}>
             {result.saved
               ? "Analysis saved to your history."
               : "Analysis completed but was not saved because you are not logged in."}
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-blue-700">Orders</p><p className="mt-1 text-2xl font-bold text-blue-950">{result.risk_summary.total_orders}</p></div>
-            <div className="rounded-2xl border border-rose-100 bg-rose-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-rose-700">High Risk</p><p className="mt-1 text-2xl font-bold text-rose-950">{result.risk_summary.high_risk}</p></div>
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Net Profit</p><p className="mt-1 text-2xl font-bold text-emerald-950">৳{Number(result.profit_summary.net_profit).toLocaleString()}</p></div>
-            <div className="rounded-2xl border border-violet-100 bg-violet-50/70 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-violet-700">Restock Needed</p><p className="mt-1 text-2xl font-bold text-violet-950">{result.stock_summary.restock_needed}</p></div>
+            <div className="rounded-2xl border border-cyan-300/20 bg-blue-500/10 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-blue-200">Orders</p><p className="mt-1 text-2xl font-bold text-blue-100">{result.risk_summary.total_orders}</p></div>
+            <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-rose-200">High Risk</p><p className="mt-1 text-2xl font-bold text-rose-100">{result.risk_summary.high_risk}</p></div>
+            <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-emerald-200">Net Profit</p><p className="mt-1 text-2xl font-bold text-emerald-100">৳{Number(result.profit_summary.net_profit).toLocaleString()}</p></div>
+            <div className="rounded-2xl border border-violet-300/20 bg-violet-500/10 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-violet-200">Restock Needed</p><p className="mt-1 text-2xl font-bold text-violet-100">{result.stock_summary.restock_needed}</p></div>
           </div>
           <div className="mt-5">
             <DonutChart
@@ -210,24 +257,24 @@ export default function UploadBox() {
             />
           </div>
           {result.smart_suggestions && (
-            <div className="mt-6 rounded-3xl border border-blue-100 bg-blue-50/70 p-5">
+            <div className="mt-6 rounded-2xl border border-cyan-300/20 bg-blue-500/10 p-5">
               <div className="flex items-center gap-3">
-                <span className="rounded-xl bg-white p-2 text-blue-600 shadow-sm"><Sparkles size={18} /></span>
+                <span className="rounded-xl bg-slate-900/70 p-2 text-cyan-300 shadow-sm"><Sparkles size={18} /></span>
                 <div>
-                  <h3 className="font-bold text-slate-950">AI Smart Action Plan</h3>
-                  <p className="mt-1 text-sm text-slate-600">Overall health: {result.smart_suggestions.overall_health}</p>
+                  <h3 className="font-bold text-white">AI Smart Action Plan</h3>
+                  <p className="mt-1 text-sm text-slate-300">Overall health: {result.smart_suggestions.overall_health}</p>
                 </div>
               </div>
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-2xl bg-white/80 p-4">
-                  <p className="text-sm font-semibold text-slate-950">Priority Actions</p>
-                  <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                <div className="rounded-2xl tm-glass p-4">
+                  <p className="text-sm font-semibold text-white">Priority Actions</p>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-300">
                     {(result.smart_suggestions.priority_actions || []).map((item) => <li key={item}>- {item}</li>)}
                   </ul>
                 </div>
-                <div className="rounded-2xl bg-white/80 p-4">
-                  <p className="text-sm font-semibold text-slate-950">Seller Next Steps</p>
-                  <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                <div className="rounded-2xl tm-glass p-4">
+                  <p className="text-sm font-semibold text-white">Seller Next Steps</p>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-300">
                     {(result.smart_suggestions.seller_next_steps || []).map((item) => <li key={item}>- {item}</li>)}
                   </ul>
                 </div>
@@ -236,10 +283,10 @@ export default function UploadBox() {
           )}
           <div className="mt-6 overflow-x-auto">
             <table className="w-full min-w-[820px] text-left text-sm">
-              <thead className="border-b bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-3 py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Rule Score</th><th>ML</th><th>Final Score</th><th>Action</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">
+              <thead className="border-b bg-white/[0.06] text-xs uppercase tracking-wider text-slate-400"><tr><th className="px-3 py-3">Order ID</th><th>Product</th><th>Amount</th><th>Risk</th><th>Rule Score</th><th>ML</th><th>Final Score</th><th>Action</th></tr></thead>
+              <tbody className="divide-y divide-white/10">
                 {result.risk_orders.map((order) => (
-                  <tr key={order.order_id} className="transition hover:bg-blue-50/40"><td className="px-3 py-4 font-semibold">{order.order_id}</td><td>{order.product_name}</td><td>৳{Number(order.amount).toLocaleString()}</td><td><RiskBadge level={order.risk_level} /></td><td>{Number(order.rule_score ?? (order.risk_score || 0)).toFixed(0)}</td><td>{order.ml_available ? `${Math.round(Number(order.ml_confidence || 0) * 100)}%` : "Fallback"}</td><td>{Number(order.final_risk_score ?? (order.risk_score || 0)).toFixed(0)}</td><td>{order.suggested_action}</td></tr>
+                  <tr key={order.order_id} className="transition hover:bg-blue-500/10"><td className="px-3 py-4 font-semibold">{order.order_id}</td><td>{order.product_name}</td><td>৳{Number(order.amount).toLocaleString()}</td><td><RiskBadge level={order.risk_level} /></td><td>{Number(order.rule_score ?? (order.risk_score || 0)).toFixed(0)}</td><td>{order.ml_available ? `${Math.round(Number(order.ml_confidence || 0) * 100)}%` : "Fallback"}</td><td>{Number(order.final_risk_score ?? (order.risk_score || 0)).toFixed(0)}</td><td>{order.suggested_action}</td></tr>
                 ))}
               </tbody>
             </table>
