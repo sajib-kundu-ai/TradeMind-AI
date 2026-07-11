@@ -47,45 +47,45 @@ export default function AIModelStatusCard({ compact = false, metrics: providedMe
   const active = Boolean(metrics?.ml_available);
 
   return (
-    <section className={`rounded-3xl border border-white/70 bg-white/85 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl ${compact ? "p-5" : "p-6"}`}>
+    <section className={`rounded-2xl border border-white/10 tm-glass shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl ${compact ? "p-5" : "p-6"}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">AI Model Status</p>
-          <h2 className="mt-2 text-lg font-bold text-slate-950">Model: {active ? "RandomForest" : "Rule Engine"}</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">AI Model Status</p>
+          <h2 className="mt-2 text-lg font-bold text-white">Model: {active ? "RandomForest" : "Rule Engine"}</h2>
         </div>
-        <span className="rounded-2xl bg-blue-50 p-2 text-blue-600">
+        <span className="rounded-2xl bg-blue-500/10 p-2 text-cyan-300">
           {active ? <BrainCircuit size={20} /> : <ShieldCheck size={20} />}
         </span>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${active ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${active ? "bg-emerald-500/10 text-emerald-200" : "bg-amber-500/10 text-amber-200"}`}>
           {active ? "Active" : "Fallback"}
         </span>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">scikit-learn</span>
+        <span className="rounded-full bg-white/[0.08] px-3 py-1 text-xs font-semibold text-slate-300">scikit-learn</span>
       </div>
 
       {active ? (
         <>
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl bg-blue-50 p-3">
-              <p className="text-xs font-semibold text-blue-700">Accuracy</p>
-              <p className="mt-1 text-lg font-bold text-blue-950">{percent(metrics.accuracy)}</p>
+            <div className="rounded-2xl bg-blue-500/10 p-3">
+              <p className="text-xs font-semibold text-blue-200">Accuracy</p>
+              <p className="mt-1 text-lg font-bold text-blue-100">{percent(metrics.accuracy)}</p>
             </div>
-            <div className="rounded-2xl bg-violet-50 p-3">
-              <p className="text-xs font-semibold text-violet-700">F1 Score</p>
-              <p className="mt-1 text-lg font-bold text-violet-950">{percent(metrics.f1)}</p>
+            <div className="rounded-2xl bg-violet-500/10 p-3">
+              <p className="text-xs font-semibold text-violet-200">F1 Score</p>
+              <p className="mt-1 text-lg font-bold text-violet-100">{percent(metrics.f1)}</p>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-            <span className="rounded-full bg-slate-100 px-3 py-1">Training Rows: {Number(metrics.training_rows || 0).toLocaleString()}</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">Top signal: {topSignal}</span>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium text-slate-300">
+            <span className="rounded-full bg-white/[0.08] px-3 py-1">Training Rows: {Number(metrics.training_rows || 0).toLocaleString()}</span>
+            <span className="rounded-full bg-white/[0.08] px-3 py-1">Top signal: {topSignal}</span>
           </div>
         </>
       ) : (
-        <div className="mt-5 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-          <p className="text-sm font-semibold text-amber-900">Rule engine fallback active</p>
-          <p className="mt-1 text-sm text-amber-700">{metrics?.message || error || "Train ML model to enable confidence scoring"}</p>
+        <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-500/10 p-4">
+          <p className="text-sm font-semibold text-amber-100">Rule engine fallback active</p>
+          <p className="mt-1 text-sm text-amber-200">{metrics?.message || error || "Train ML model to enable confidence scoring"}</p>
         </div>
       )}
     </section>
