@@ -4,13 +4,13 @@ import { FileDown, Info, PackageCheck, ShieldCheck, TrendingUp } from "lucide-re
 
 export default function UploadPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0">
+    <main className="tm-dark-app pb-24 lg:pb-0">
       <Sidebar />
 
-      <section className="lg:pl-64">
-        <header className="border-b border-white/70 bg-white/70 px-6 py-6 backdrop-blur-xl">
-          <h1 className="text-2xl font-bold text-slate-950">Upload Orders</h1>
-          <p className="mt-1 text-sm text-slate-500">
+      <section className="tm-app-content lg:pl-64">
+        <header className="tm-app-header px-6 py-5">
+          <h1 className="text-2xl font-bold text-white">Upload Orders</h1>
+          <p className="mt-1 text-sm text-slate-400">
             Upload seller order data and let TradeMind AI generate business insights.
           </p>
         </header>
@@ -21,13 +21,13 @@ export default function UploadPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6 shadow-sm">
               <div className="flex items-center gap-3">
-                <Info className="text-blue-600" size={22} />
-                <h2 className="font-bold text-slate-950">Required Columns</h2>
+                <Info className="text-cyan-300" size={22} />
+                <h2 className="font-bold text-white">Required Columns</h2>
               </div>
 
-              <div className="mt-5 space-y-2 text-sm text-slate-600">
+              <div className="mt-5 space-y-2 text-sm text-slate-300">
                 <p>order_id</p>
                 <p>product_name</p>
                 <p>payment_type</p>
@@ -45,7 +45,7 @@ export default function UploadPage() {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
+            <div className="rounded-2xl border border-white/10 bg-slate-950 p-6 text-white shadow-sm">
               <h2 className="text-lg font-bold">What TradeMind AI analyzes</h2>
               <div className="mt-5 space-y-4">
                 {[
