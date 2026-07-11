@@ -19,6 +19,12 @@ TARGET_DAYS = 14
 
 
 def _safe_float(value):
+    if value is None or pd.isna(value):
+        return 0.0
+    if isinstance(value, str):
+        value = value.strip().replace(",", "")
+        if not value:
+            return 0.0
     try:
         number = float(value)
         if pd.isna(number):
@@ -33,6 +39,24 @@ def _safe_text(value, default=""):
         return default
     text = str(value).strip()
     return text or default
+
+
+def _normalize_columns(df):
+    df = df.copy()
+    normalized_columns = []
+    for column in df.columns:
+        normalized = (
+            str(column)
+            .strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+        while "__" in normalized:
+            normalized = normalized.replace("__", "_")
+        normalized_columns.append(normalized)
+    df.columns = normalized_columns
+    return df
 
 
 def _stock_status(avg_daily_sales, days_left):
@@ -139,16 +163,15 @@ def analyze_stock_dataframe(df):
             "stocks": [],
         }
 
-    df = df.copy()
-    df.columns = [str(column).strip() for column in df.columns]
+    df = _normalize_columns(df)
     _validate_columns(df)
     for column in OPTIONAL_COLUMNS:
         if column not in df.columns:
-            df[column] = "" if column in {"product_category", "supplier_name"} else 0
+            df[column] = "Unknown" if column == "supplier_name" else "General" if column == "product_category" else 0
 
     df["product_name"] = df["product_name"].apply(lambda value: _safe_text(value, "Unknown Product"))
     df["product_category"] = df["product_category"].apply(lambda value: _safe_text(value, "General"))
-    df["supplier_name"] = df["supplier_name"].apply(_safe_text)
+    df["supplier_name"] = df["supplier_name"].apply(lambda value: _safe_text(value, "Unknown"))
     df["current_stock"] = df["current_stock"].apply(_safe_float)
     df["avg_daily_sales"] = df["avg_daily_sales"].apply(_safe_float)
     df["cost_price"] = df["cost_price"].apply(_safe_float)
@@ -246,7 +269,7 @@ def read_stock_file_records(file_path):
         df = pd.read_excel(file_path)
     else:
         df = pd.read_csv(file_path)
-    df.columns = [str(column).strip() for column in df.columns]
+    df = _normalize_columns(df)
     _validate_columns(df)
     return df.to_dict(orient="records")
 
