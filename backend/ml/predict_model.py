@@ -34,7 +34,7 @@ DEFAULTS = {
     "quantity": 1,
     "customer_type": "New",
     "phone_verified": "Yes",
-    "email_verified": "Yes",
+    "email_verified": "Unknown",
     "address_complete": "Yes",
     "distance_km": 0,
     "previous_orders": 0,
@@ -49,6 +49,7 @@ DEFAULTS = {
 }
 
 _MODEL = None
+_MODEL_FAILED = False
 
 
 def _safe_float(value, default=0.0):
@@ -67,17 +68,23 @@ def _safe_float(value, default=0.0):
 
 def _safe_int(value, default=0):
     try:
-        return int(float(value))
+        return int(_safe_float(value, default))
     except (TypeError, ValueError):
         return default
 
 
 def _load_model():
-    global _MODEL
+    global _MODEL, _MODEL_FAILED
+    if _MODEL_FAILED:
+        return None
     if _MODEL is None:
         if not MODEL_FILE.exists():
             return None
-        _MODEL = joblib.load(MODEL_FILE)
+        try:
+            _MODEL = joblib.load(MODEL_FILE)
+        except Exception:
+            _MODEL_FAILED = True
+            return None
     return _MODEL
 
 
