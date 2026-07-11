@@ -42,19 +42,19 @@ export default function DonutChart({
     : "conic-gradient(#e2e8f0 0% 100%)";
 
   return (
-    <div className={embedded ? "" : "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"}>
+    <div className={embedded ? "" : "rounded-2xl border border-white/10 bg-slate-900/70 p-6 shadow-sm"}>
       {(title || subtitle) && (
         <div>
-          {title && <h2 className="text-lg font-bold text-slate-950">{title}</h2>}
-          {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+          {title && <h2 className="text-lg font-bold text-white">{title}</h2>}
+          {subtitle && <p className="mt-1 text-sm text-slate-400">{subtitle}</p>}
         </div>
       )}
 
       <div className="mt-6 flex flex-col items-center gap-6 md:flex-row">
         <div className="relative h-48 w-48 shrink-0 rounded-full p-4 shadow-inner" style={{ background }}>
-          <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-white text-center shadow-[inset_0_0_0_1px_rgba(148,163,184,0.18)]">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{centerLabel}</p>
-            <p className="mt-1 text-2xl font-bold text-slate-950">
+          <div className="flex h-full w-full flex-col items-center justify-center rounded-full bg-slate-900/70 text-center shadow-[inset_0_0_0_1px_rgba(148,163,184,0.18)]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{centerLabel}</p>
+            <p className="mt-1 text-2xl font-bold text-white">
               {hasData ? centerValue || compactValue(total) : "No data"}
             </p>
           </div>
@@ -66,20 +66,20 @@ export default function DonutChart({
               safeSegments.map((segment) => {
                 const percent = Math.round((segment.value / total) * 100);
                 return (
-                  <div key={segment.label} className="flex items-center justify-between gap-4 rounded-2xl bg-slate-50 p-4">
+                  <div key={segment.label} className="flex items-center justify-between gap-4 rounded-2xl bg-white/[0.06] p-4">
                     <div className="flex min-w-0 items-center gap-3">
                       <span className={`h-3 w-3 shrink-0 rounded-full ${segment.className || segment.colorClass || ""}`} style={{ backgroundColor: segment.color }} />
-                      <span className="truncate text-sm font-semibold text-slate-700">{segment.label}</span>
+                      <span className="truncate text-sm font-semibold text-slate-300">{segment.label}</span>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-slate-950">{segment.displayValue || compactValue(segment.value)}</p>
-                      <p className="text-xs text-slate-500">{percent}%</p>
+                      <p className="text-sm font-bold text-white">{segment.displayValue || compactValue(segment.value)}</p>
+                      <p className="text-xs text-slate-400">{percent}%</p>
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="rounded-2xl bg-slate-50 p-5 text-sm font-medium text-slate-500">
+              <div className="rounded-2xl bg-white/[0.06] p-5 text-sm font-medium text-slate-400">
                 No chart data available yet.
               </div>
             )}
