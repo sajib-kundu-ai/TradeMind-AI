@@ -7,6 +7,8 @@ import StatCard from "@/components/StatCard";
 import StockMindClient from "@/components/StockMindClient";
 import { getLatestStockAnalysis, uploadStockAnalysis } from "@/lib/api";
 
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 const sampleRows = [
   [
     "product_name",
@@ -83,6 +85,26 @@ function isSupportedStockFile(file) {
   return /\.(csv|xlsx)$/i.test(file?.name || "");
 }
 
+function validateStockFile(file) {
+  if (!file) {
+    return "Choose a CSV or XLSX stock file first.";
+  }
+
+  if (!isSupportedStockFile(file)) {
+    return "Only CSV and Excel .xlsx stock files are supported.";
+  }
+
+  if (file.size === 0) {
+    return "Selected stock file is empty. Choose a CSV or XLSX file with stock data.";
+  }
+
+  if (file.size > MAX_UPLOAD_BYTES) {
+    return "Stock file is too large. Please upload a CSV/XLSX file under 10 MB.";
+  }
+
+  return "";
+}
+
 function MergeStatsSummary({ stats }) {
   if (!stats) return null;
 
@@ -94,11 +116,11 @@ function MergeStatsSummary({ stats }) {
   ];
 
   return (
-    <div className="grid gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-sm sm:grid-cols-4">
+    <div className="grid gap-3 rounded-2xl border border-cyan-300/20 bg-blue-500/10 p-4 text-sm sm:grid-cols-4">
       {items.map(([label, value]) => (
         <div key={label}>
-          <p className="text-xs font-medium text-blue-700">{label}</p>
-          <p className="mt-1 text-lg font-bold text-slate-950">{value ?? 0}</p>
+          <p className="text-xs font-medium text-blue-200">{label}</p>
+          <p className="mt-1 text-lg font-bold text-white">{value ?? 0}</p>
         </div>
       ))}
     </div>
@@ -116,13 +138,13 @@ function StockUploadSection({
   onSelectFile,
 }) {
   return (
-    <section className="rounded-3xl border border-white/70 bg-white/85 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+    <section className="rounded-2xl border border-white/10 tm-glass p-6 shadow-[0_12px_40px_rgba(15,23,42,0.07)] backdrop-blur-xl">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
         <div>
-          <h2 className="text-lg font-bold text-slate-950">{title}</h2>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">{subtitle}</p>
+          <h2 className="text-lg font-bold text-white">{title}</h2>
+          <p className="mt-1 max-w-2xl text-sm text-slate-400">{subtitle}</p>
         </div>
-        <button type="button" onClick={downloadSampleCsv} className="inline-flex w-fit items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+        <button type="button" onClick={downloadSampleCsv} className="inline-flex w-fit items-center justify-center gap-2 rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/10">
           <Download size={17} />
           Sample CSV
         </button>
@@ -135,15 +157,15 @@ function StockUploadSection({
         className="hidden"
         onChange={onSelectFile}
       />
-      <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-5 flex w-full items-center justify-between gap-4 rounded-3xl border border-dashed border-blue-200 bg-blue-50/60 p-5 text-left transition hover:border-blue-300 hover:bg-blue-50">
+      <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-5 flex w-full items-center justify-between gap-4 rounded-2xl border border-dashed border-cyan-300/20 bg-blue-500/10 p-5 text-left transition hover:border-blue-300 hover:bg-blue-500/10">
         <span>
-          <span className="block text-sm font-bold text-slate-900">{selectedFile ? selectedFile.name : "Choose stock CSV/XLSX"}</span>
-          <span className="mt-1 block text-xs text-slate-500">Required: product_name, current_stock, avg_daily_sales</span>
+          <span className="block text-sm font-bold text-slate-100">{selectedFile ? selectedFile.name : "Choose stock CSV/XLSX"}</span>
+          <span className="mt-1 block text-xs text-slate-400">Required: product_name, current_stock, avg_daily_sales</span>
         </span>
-        <Upload className="shrink-0 text-blue-700" size={22} />
+        <Upload className="shrink-0 text-blue-200" size={22} />
       </button>
 
-      <button type="button" onClick={onUpload} disabled={uploading || !selectedFile} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
+      <button type="button" onClick={onUpload} disabled={uploading || !selectedFile} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl tm-button-primary px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
         <FileSpreadsheet size={17} />
         {uploading ? "Analyzing Stock..." : buttonLabel}
       </button>
@@ -205,18 +227,18 @@ export default function StockPage() {
   }, []);
 
   async function handleUpload() {
+    if (uploading) {
+      return;
+    }
+
     if (!selectedFile) {
       fileInputRef.current?.click();
       return;
     }
 
-    if (!isSupportedStockFile(selectedFile)) {
-      setError("Only CSV and Excel .xlsx stock files are supported.");
-      return;
-    }
-
-    if (selectedFile.size > 25 * 1024 * 1024) {
-      setError("Stock file is too large. Please upload a file under 25 MB.");
+    const validationError = validateStockFile(selectedFile);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -244,39 +266,43 @@ export default function StockPage() {
   const hasStockData = Boolean(data && stocks.length);
   const handleFileChange = (event) => {
     const file = event.target.files?.[0] || null;
-    setSelectedFile(file);
-    setError("");
+    const validationError = file ? validateStockFile(file) : "";
+    setSelectedFile(validationError ? null : file);
+    setError(validationError);
     setSuccess("");
+    if (validationError && fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50/40 to-violet-50/50 pb-24 lg:pb-0">
+    <main className="tm-dark-app pb-24 lg:pb-0">
       <Sidebar />
-      <section className="lg:pl-64">
-        <header className="border-b border-white/70 bg-white/70 px-6 py-6 backdrop-blur-xl">
+      <section className="tm-app-content lg:pl-64">
+        <header className="tm-app-header px-6 py-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-950">StockMind</h1>
-              <p className="mt-1 text-sm text-slate-500">Monitor uploaded inventory, sales velocity, and restock urgency.</p>
+              <h1 className="text-2xl font-bold tracking-tight text-white">StockMind</h1>
+              <p className="mt-1 text-sm text-slate-400">Monitor uploaded inventory, sales velocity, and restock urgency.</p>
             </div>
-            <span className="w-fit rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">{dataSource}</span>
+            <span className="w-fit rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-200">{dataSource}</span>
           </div>
         </header>
 
         <div className="space-y-6 p-6">
-          {error && <p className="rounded-3xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</p>}
-          {success && <p className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-700">{success}</p>}
+          {error && <p className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-5 text-sm text-rose-200">{error}</p>}
+          {success && <p className="rounded-2xl border border-emerald-200 bg-emerald-500/10 p-5 text-sm text-emerald-200">{success}</p>}
 
-          {loading && <p className="rounded-3xl border border-white/70 bg-white/85 p-5 text-sm text-slate-500">Loading stock analysis...</p>}
+          {loading && <p className="rounded-2xl border border-white/10 tm-glass p-5 text-sm text-slate-400">Loading stock analysis...</p>}
 
           {!loading && !hasStockData && (
             <section className="mx-auto max-w-3xl">
               <div className="text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-200">
                   <FileSpreadsheet size={26} />
                 </div>
-                <h2 className="mt-5 text-xl font-bold text-slate-950">Upload stock data</h2>
-                <p className="mt-2 text-sm text-slate-500">Upload your product stock and sales CSV/XLSX to analyze StockMind.</p>
+                <h2 className="mt-5 text-xl font-bold text-white">Upload stock data</h2>
+                <p className="mt-2 text-sm text-slate-400">Upload your product stock and sales CSV/XLSX to analyze StockMind.</p>
               </div>
 
               <div className="mt-6">
